@@ -93,7 +93,7 @@ if __name__ == '__main__':
     argparser.add_argument('-s', '--spider', action='append', required=True)
     args = argparser.parse_args()
 
-    home_path = os.environ.get('PAGINATOR_CRAWLER_HOME', os.path.dirname(__file__))
+    home_path = os.environ.get('NEWS_CRAWLERS_HOME', os.path.dirname(__file__))
 
     for spider in args.spider:
         # read configuration for this spider

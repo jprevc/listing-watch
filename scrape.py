@@ -99,7 +99,7 @@ if __name__ == '__main__':
         # read configuration for this spider
         configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
         with open(configuration_path, 'r') as f:
-            spider_configuration = yaml.load(f)
+            spider_configuration = yaml.safe_load(f)
         email_recipients_lst = spider_configuration['email_recipients']
 
         # run spider to acquire crawled data

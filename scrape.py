@@ -95,6 +95,12 @@ if __name__ == '__main__':
 
     home_path = os.environ.get('NEWS_CRAWLERS_HOME', os.path.dirname(__file__))
 
+    # create __cache__ folder in which *_cache.json files will be stored
+    cache_folder = os.path.join(home_path, '__cache__')
+    if not os.path.exists(cache_folder):
+        os.makedirs(cache_folder)
+
+    # run all spiders
     for spider in args.spider:
         # read configuration for this spider
         configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
@@ -106,7 +112,7 @@ if __name__ == '__main__':
         crawled_data = run_spider(spider)
 
         # get previously crawled cached items
-        cached_json = os.path.join(home_path, spider + '_cached.json')
+        cached_json = os.path.join(cache_folder, spider + '_cached.json')
         cached_data = get_cached_items(cached_json)
 
         # check which crawled items are new

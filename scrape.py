@@ -37,6 +37,9 @@ def run_spider(spider_name):
     with open(crawled_output_path, 'r') as f:
         scraped_data = json.load(f)
 
+    # remove json file, which was created when crawling - it is not needed anymore
+    os.remove(crawled_output_path)
+
     return scraped_data
 
 

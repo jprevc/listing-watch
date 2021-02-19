@@ -1,6 +1,6 @@
-# news_crawlers
+# News Crawlers
 Contains various spiders which crawl websites for new content. If any new
-content is found, users are alerted vi email.
+content is found, users are alerted via email.
 
 Checkout
 ----------------
@@ -11,14 +11,14 @@ Checkout this project with
 Environment configuration
 ----------------------------
 NewsCrawlers needs configuration for each spider. This configuration is provided
-in user defined .yaml files. Location of those files should be set with environment variables.
+in user defined .yaml files. Location of those files should be set as an environment variable.
 Define new environment variable named NEWS_CRAWLERS_HOME and set its path to location
 where configuration will be stored. 
 
-This location will also be used to stored all crawled items (cache), so program will be 
-able to determine, whether or not an item is new when crawling is run again.
+This location will also be used to store all crawled items (cache), so program will be 
+able to determine, whether an item is new when crawling is run again.
 
-If NEWS_CRAWLERS_HOME variable is not set. Home directory will be set to project root by default 
+If NEWS_CRAWLERS_HOME variable is not set, home directory will be set to project root by default 
 
 Within this location, each created spider should have its own .yaml file named
 
@@ -49,9 +49,9 @@ Running the crawlers
 ----------------------
 Run the scraper by executing the following command on the project root:
 
-    python scrape.py -s {spider_name_1} -s {spider_name_2} ... 
+    python scrape.py spider_name
 
-This will run all specified spiders and then send an email notification if any
+This will run specified spider and then send an email notification if any
 news are found.
 
 

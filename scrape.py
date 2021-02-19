@@ -4,7 +4,7 @@ import os
 import json
 import smtplib
 import yaml
-import argparse
+import sys
 
 
 def run_spider(spider_name):
@@ -36,6 +36,9 @@ def run_spider(spider_name):
     # open resulting json file and read its contents
     with open(crawled_output_path, 'r') as f:
         scraped_data = json.load(f)
+
+    # remove json file, which was created when crawling - it is not needed anymore
+    os.remove(crawled_output_path)
 
     return scraped_data
 
@@ -88,36 +91,37 @@ def get_cached_items(cached_items_path):
 
 
 if __name__ == '__main__':
-    # parse command line arguments to obtain names of spiders that need to be run
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('-s', '--spider', action='append', required=True)
-    args = argparser.parse_args()
+    spider = sys.argv[1]
 
     home_path = os.environ.get('NEWS_CRAWLERS_HOME', os.path.dirname(__file__))
 
-    for spider in args.spider:
-        # read configuration for this spider
-        configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
-        with open(configuration_path, 'r') as f:
-            spider_configuration = yaml.load(f)
-        email_recipients_lst = spider_configuration['email_recipients']
+    # create __cache__ folder in which *_cache.json files will be stored
+    cache_folder = os.path.join(home_path, '__cache__')
+    if not os.path.exists(cache_folder):
+        os.makedirs(cache_folder)
 
-        # run spider to acquire crawled data
-        crawled_data = run_spider(spider)
+    # read configuration for this spider
+    configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
+    with open(configuration_path, 'r') as f:
+        spider_configuration = yaml.safe_load(f)
+    email_recipients_lst = spider_configuration['email_recipients']
 
-        # get previously crawled cached items
-        cached_json = os.path.join(home_path, spider + '_cached.json')
-        cached_data = get_cached_items(cached_json)
+    # run spider to acquire crawled data
+    crawled_data = run_spider(spider)
 
-        # check which crawled items are new
-        new_data = [item for item in crawled_data if item not in cached_data]
+    # get previously crawled cached items
+    cached_json = os.path.join(cache_folder, spider + '_cached.json')
+    cached_spider_data = get_cached_items(cached_json)
 
-        # if new items have been found, send an email alert and add that data to cached items
-        if new_data:
-            email_body = '\n'.join([spider_configuration['email_body_format'].format(**item) for item in new_data])
-            send_email(spider + ' nove objave', email_body, email_recipients_lst)
+    # check which crawled items are new
+    new_data = [item for item in crawled_data if item not in cached_spider_data]
 
-            # append new items to cached ones and write all back to file
-            cached_data += list(new_data)
-            with open(cached_json, 'w+') as f:
-                json.dump(cached_data, f)
+    # if new items have been found, send an email alert and add that data to cached items
+    if new_data:
+        email_body = '\n'.join([spider_configuration['email_body_format'].format(**item) for item in new_data])
+        send_email(spider + ' nove objave', email_body, email_recipients_lst)
+
+        # append new items to cached ones and write all back to file
+        cached_spider_data += list(new_data)
+        with open(cached_json, 'w+') as f:
+            json.dump(cached_spider_data, f)

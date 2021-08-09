@@ -94,5 +94,6 @@ class PushoverNotificator(NotificatorBase):
         for user_key in self.recipients:
             payload = {"token": os.environ.get('PUSHOVER_APP_TOKEN'),
                        "user": user_key,
+                       "title": subject,
                        "message": message}
             session.post('https://api.pushover.net/1/messages.json', data=payload, headers={'User-Agent': 'Python'})

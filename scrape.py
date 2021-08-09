@@ -2,7 +2,6 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 import os
 import json
-import smtplib
 import yaml
 import sys
 
@@ -113,7 +112,7 @@ if __name__ == '__main__':
         for notificator_type, notificator_data in spider_configuration['notifications'].items():
             notificator = get_notificator(notificator_type)(recipients=notificator_data['recipients'])
 
-            notificator.send(spider + ' nove objave', message_body)
+            notificator.send(spider + ' news', message_body)
 
             # append new items to cached ones and write all back to file
             cached_spider_data += list(new_data)

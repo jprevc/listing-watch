@@ -104,7 +104,7 @@ if __name__ == '__main__':
     configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
     with open(configuration_path, 'r') as f:
         spider_configuration = yaml.safe_load(f)
-    email_recipients_lst = spider_configuration['email_recipients']
+    recipients_lst = spider_configuration['recipients']
 
     # run spider to acquire crawled data
     crawled_data = run_spider(spider)
@@ -118,8 +118,8 @@ if __name__ == '__main__':
 
     # if new items have been found, send an email alert and add that data to cached items
     if new_data:
-        email_body = '\n'.join([spider_configuration['email_body_format'].format(**item) for item in new_data])
-        send_email(spider + ' nove objave', email_body, email_recipients_lst)
+        message_body = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
+        send_email(spider + ' nove objave', message_body, recipients_lst)
 
         # append new items to cached ones and write all back to file
         cached_spider_data += list(new_data)

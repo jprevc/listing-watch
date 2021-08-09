@@ -6,7 +6,7 @@ import smtplib
 import yaml
 import sys
 
-from notificators import Email
+from notificators import NotificatorBase, EmailNotificator, PushoverNotificator
 
 def run_spider(spider_name):
     """
@@ -91,8 +91,20 @@ def get_cached_items(cached_items_path):
     return cached_data
 
 
-def get_notificator(type):
-    return {'email': Email}[type]
+def get_notificator(notificator_type):
+    """
+    Creates a notificator according to specified type.
+
+    :param notificator_type: Notificator type. Can either be 'email' or 'pushover'.
+    :type notificator_type: str
+
+    :return: Notificator object.
+    :rtype: NotificatorBase
+    """
+    notificator_map = {'email': EmailNotificator,
+                       'pushover': PushoverNotificator}
+
+    return notificator_map[notificator_type]
 
 
 if __name__ == '__main__':
@@ -122,12 +134,15 @@ if __name__ == '__main__':
 
     # if new items have been found, send a notification and add that data to cached items
     if new_data:
-        notificator = get_notificator(spider_configuration['notification_type'])(spider_configuration['recipients'])
-
         message_body = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
-        notificator.send(spider + ' nove objave', message_body)
 
-        # append new items to cached ones and write all back to file
-        cached_spider_data += list(new_data)
-        with open(cached_json, 'w+') as f:
-            json.dump(cached_spider_data, f)
+        # send message with each configured notificator
+        for notificator_type, notificator_data in spider_configuration['notifications'].items():
+            notificator = get_notificator(notificator_type)(recipients=notificator_data['recipients'])
+
+            notificator.send(spider + ' nove objave', message_body)
+
+            # append new items to cached ones and write all back to file
+            cached_spider_data += list(new_data)
+            with open(cached_json, 'w+') as f:
+                json.dump(cached_spider_data, f)

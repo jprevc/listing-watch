@@ -8,6 +8,7 @@ import sys
 
 from notificators import NotificatorBase, EmailNotificator, PushoverNotificator
 
+
 def run_spider(spider_name):
     """
     Runs spider and returns collected (scraped) data.
@@ -42,34 +43,6 @@ def run_spider(spider_name):
     os.remove(crawled_output_path)
 
     return scraped_data
-
-
-def send_email(subject, message, recipient_list):
-    """
-    Sends email message to specified recipients.
-
-    :param subject: Subject of email.
-    :type subject: str
-
-    :param message: Email message (body).
-    :type message: str
-
-    :param recipient_list: List of emails (recipients) to which email will be sent.
-    :type recipient_list: list
-    """
-    email_password = os.environ.get('EMAIL_PASS')
-    email_user = os.environ.get('EMAIL_USER')
-
-    with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.ehlo()
-
-        smtp.login(user=email_user, password=email_password)
-
-        msg = f'Subject: {subject}\n\n{message}'
-
-        smtp.sendmail(email_user, recipient_list, msg.encode('utf8'))
 
 
 def get_cached_items(cached_items_path):

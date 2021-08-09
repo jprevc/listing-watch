@@ -6,6 +6,7 @@ import smtplib
 import yaml
 import sys
 
+from notificators import Email
 
 def run_spider(spider_name):
     """
@@ -90,6 +91,10 @@ def get_cached_items(cached_items_path):
     return cached_data
 
 
+def get_notificator(type):
+    return {'email': Email}[type]
+
+
 if __name__ == '__main__':
     spider = sys.argv[1]
 
@@ -104,7 +109,6 @@ if __name__ == '__main__':
     configuration_path = os.path.join(home_path, spider + '_configuration.yaml')
     with open(configuration_path, 'r') as f:
         spider_configuration = yaml.safe_load(f)
-    recipients_lst = spider_configuration['recipients']
 
     # run spider to acquire crawled data
     crawled_data = run_spider(spider)
@@ -116,10 +120,12 @@ if __name__ == '__main__':
     # check which crawled items are new
     new_data = [item for item in crawled_data if item not in cached_spider_data]
 
-    # if new items have been found, send an email alert and add that data to cached items
+    # if new items have been found, send a notification and add that data to cached items
     if new_data:
+        notificator = get_notificator(spider_configuration['notification_type'])(spider_configuration['recipients'])
+
         message_body = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
-        send_email(spider + ' nove objave', message_body, recipients_lst)
+        notificator.send(spider + ' nove objave', message_body)
 
         # append new items to cached ones and write all back to file
         cached_spider_data += list(new_data)

@@ -1,3 +1,8 @@
+"""
+Contains various Notificator implementations.
+"""
+
+
 from abc import ABC, abstractmethod
 import os
 import smtplib
@@ -5,6 +10,10 @@ import requests
 
 
 class NotificatorBase(ABC):
+    """
+    Notificator base class. This class is meant to be subclassed for each implementation of different notification
+    options.
+    """
 
     def __init__(self, recipients):
         self.recipients = recipients
@@ -20,7 +29,6 @@ class NotificatorBase(ABC):
         :param message: Message content.
         :type message: str
         """
-        pass
 
 
 class EmailNotificator(NotificatorBase):
@@ -80,15 +88,13 @@ class PushoverNotificator(NotificatorBase):
     :type recipients: list
     """
 
-    def send(self, subject, message):
+    def send(self, subject: str, message: str):
         """
         Sends a pushover notification.
 
         :param subject: Subject of push notification.
-        :type subject: str
 
         :param message: Push notification message.
-        :type message: str
         """
         session = requests.Session()
         for user_key in self.recipients:

@@ -1,22 +1,26 @@
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
+"""
+Main module. Runs defined crawler and send notifications to user, if any news are found.
+"""
+
 import os
 import json
-import yaml
 import sys
+from typing import Type
+
+import yaml
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
 
 from notificators import NotificatorBase, EmailNotificator, PushoverNotificator
 
 
-def run_spider(spider_name):
+def run_spider(spider_name: str) -> list:
     """
     Runs spider and returns collected (scraped) data.
 
     :param spider_name: Name of spider to be run.
-    :type spider_name: str
 
     :return: Collected (scraped) data.
-    :rtype: list
     """
     crawled_output_path = spider_name + '.json'
 
@@ -35,8 +39,8 @@ def run_spider(spider_name):
     process.start()  # the script will block here until the crawling is finished
 
     # open resulting json file and read its contents
-    with open(crawled_output_path, 'r') as f:
-        scraped_data = json.load(f)
+    with open(crawled_output_path, 'r') as file:
+        scraped_data = json.load(file)
 
     # remove json file, which was created when crawling - it is not needed anymore
     os.remove(crawled_output_path)
@@ -44,34 +48,32 @@ def run_spider(spider_name):
     return scraped_data
 
 
-def get_cached_items(cached_items_path):
+def get_cached_items(cached_items_path: str) -> list:
     """
     Returns cached (previously scraped) items from file.
 
-    :param cached_items_path: Path to file which contains items, that were scraped in the previous run.
-    :type cached_items_path: str
+    :param cached_items_path: Path to file which contains items, that were scraped
+                              in the previous run.
 
-    :return: List of cached items. If specified file does not exist, an empty list will be returned.
-    :rtype: list
+    :return: List of cached items. If specified file does not exist, an empty list
+                                   will be returned.
     """
     if os.path.exists(cached_items_path):
-        with open(cached_items_path, 'r') as f:
-            cached_data = json.load(f)
+        with open(cached_items_path, 'r') as file:
+            cached_data = json.load(file)
     else:
         cached_data = []
 
     return cached_data
 
 
-def get_notificator(notificator_type):
+def get_notificator(notificator_type: str) -> Type[NotificatorBase]:
     """
     Creates a notificator according to specified type.
 
     :param notificator_type: Notificator type. Can either be 'email' or 'pushover'.
-    :type notificator_type: str
 
     :return: Notificator object.
-    :rtype: NotificatorBase
     """
     notificator_map = {'email': EmailNotificator,
                        'pushover': PushoverNotificator}
@@ -106,13 +108,13 @@ if __name__ == '__main__':
 
     # if new items have been found, send a notification and add that data to cached items
     if new_data:
-        message_body = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
+        MESSAGE_BODY = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
 
         # send message with each configured notificator
-        for notificator_type, notificator_data in spider_configuration['notifications'].items():
-            notificator = get_notificator(notificator_type)(recipients=notificator_data['recipients'])
+        for notificator_type_str, notificator_data in spider_configuration['notifications'].items():
+            notificator = get_notificator(notificator_type_str)(recipients=notificator_data['recipients'])
 
-            notificator.send(spider + ' news', message_body)
+            notificator.send(spider + ' news', MESSAGE_BODY)
 
             # append new items to cached ones and write all back to file
             cached_spider_data += list(new_data)

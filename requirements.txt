@@ -1,3 +1,5 @@
 scrapy
 PyYAML
 requests
+numpy
+parameterized

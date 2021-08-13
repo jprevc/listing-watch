@@ -4,7 +4,6 @@ Contains various Notificator implementations.
 
 
 from abc import ABC, abstractmethod
-import os
 import smtplib
 
 import requests

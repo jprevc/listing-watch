@@ -67,18 +67,20 @@ def get_cached_items(cached_items_path: str) -> list:
     return cached_data
 
 
-def get_notificator(notificator_type: str) -> Type[NotificatorBase]:
+def get_notificator(notificator_type: str, recipients: list):
     """
     Creates a notificator according to specified type.
 
     :param notificator_type: Notificator type. Can either be 'email' or 'pushover'.
 
     :return: Notificator object.
+    :rtype: NotificatorBase
     """
-    notificator_map = {'email': EmailNotificator,
-                       'pushover': PushoverNotificator}
+    notificator_map = {'email': lambda: EmailNotificator(recipients, os.environ.get('EMAIL_USER'),
+                                                         os.environ.get('EMAIL_PASS')),
+                       'pushover': lambda: PushoverNotificator(recipients, os.environ.get('PUSHOVER_APP_TOKEN'))}
 
-    return notificator_map[notificator_type]
+    return notificator_map[notificator_type]()
 
 
 if __name__ == '__main__':
@@ -112,9 +114,9 @@ if __name__ == '__main__':
 
         # send message with each configured notificator
         for notificator_type_str, notificator_data in spider_configuration['notifications'].items():
-            notificator = get_notificator(notificator_type_str)(recipients=notificator_data['recipients'])
+            notificator = get_notificator(notificator_type_str, notificator_data['recipients'])
 
-            notificator.send(spider + ' news', MESSAGE_BODY)
+            notificator.send_text(spider + ' news', MESSAGE_BODY)
 
             # append new items to cached ones and write all back to file
             cached_spider_data += list(new_data)

@@ -1,19 +1,30 @@
+"""
+Contains tests for Notificator classes.
+"""
+
+
 import unittest
 
 from ..notificators import PushoverNotificator, EmailNotificator
-from .mocks import SessionMock, SmtpMock
+from .mocks import HttpsSessionMock, SmtpMock
 from parameterized import parameterized
 
 
 class Test_PushoverNotificator(unittest.TestCase):
+    """
+    Tests for PuschoverNotificator class.
+    """
     def setUp(self):
         self.pushover = PushoverNotificator(['user_key_1'], 'app_token')
 
         # override _open_session with mocked version
-        self._session_mock = SessionMock()
+        self._session_mock = HttpsSessionMock()
         self.pushover._open_session = lambda: self._session_mock
 
     def test_send_text(self):
+        """
+        Test that 'send_text' method correctly creates message text for a pushover notification.
+        """
         self.pushover.send_text('test_subject', 'test_message')
         self.assertEqual(self._session_mock.simulated_messages[0], 'test_message')
 
@@ -22,6 +33,9 @@ class Test_PushoverNotificator(unittest.TestCase):
                            ('10_times_300_3_users', 10, 300, 3),
                            ('100_times_200_4_users', 100, 200, 4)])
     def test_send_items_correctly_divides_items(self, _, num_test_items, text_length, num_users):
+        """
+        Test that 'send_items' method correctly divides items if length of message exceeds 1024 characters.
+        """
         items = [{'data': "a"*text_length}]*num_test_items
         self.pushover.recipients = ['user_key']*num_users
 
@@ -35,6 +49,9 @@ class Test_PushoverNotificator(unittest.TestCase):
                            ('10_messages_3_users', 10, 300, 3),
                            ('100_messages_4_users', 100, 200, 4)])
     def test_send_items_separate_correctly_separates_items(self, _, num_test_items, text_length, num_users):
+        """
+        Test that 'send_items' method correctly sends each item separately if that is specified.
+        """
         items = [{'data': "a" * text_length}] * num_test_items
         self.pushover.recipients = ['user_key'] * num_users
 
@@ -52,6 +69,9 @@ class Test_EmailNotificator(unittest.TestCase):
         self.email._get_smtp_session = lambda: self._smtp_mock
 
     def test_send_text(self):
+        """
+        Test that 'send_text' method correctly creates message text for email.
+        """
         self.email.send_text('test_subject', 'test_message')
         self.assertEqual(self._smtp_mock.simulated_messages[0], b'Subject: test_subject\n\ntest_message')
 

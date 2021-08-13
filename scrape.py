@@ -5,13 +5,12 @@ Main module. Runs defined crawler and send notifications to user, if any news ar
 import os
 import json
 import sys
-from typing import Type
 
 import yaml
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-from notificators import NotificatorBase, EmailNotificator, PushoverNotificator
+from notificators import EmailNotificator, PushoverNotificator
 
 
 def run_spider(spider_name: str) -> list:
@@ -72,6 +71,8 @@ def get_notificator(notificator_type: str, recipients: list):
     Creates a notificator according to specified type.
 
     :param notificator_type: Notificator type. Can either be 'email' or 'pushover'.
+
+    :param recipients: List of recipients to which messages should be sent.
 
     :return: Notificator object.
     :rtype: NotificatorBase

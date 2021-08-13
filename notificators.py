@@ -5,6 +5,7 @@ Contains various Notificator implementations.
 
 from abc import ABC, abstractmethod
 import smtplib
+from typing import List
 
 import requests
 import numpy as np
@@ -31,7 +32,15 @@ class NotificatorBase(ABC):
         :type message: str
         """
 
-    def send_items(self, subject, items, item_format, send_separate=False):
+    def send_items(self, subject: str, items: List[dict], item_format: str, send_separate: bool=False):
+        """
+        Sends items in a form of a dictionary to recipients.
+
+        :param subject: Subject for message.
+        :param items: List of dictionaries, containing data as key value pairs, which will be sent to recipients.
+        :param item_format: Format, with which each item's message will be created.
+        :param send_separate: If True, each item will be sent as separate message.
+        """
         text = ""
         for item in items:
             item_text = item_format.format(**item)
@@ -64,7 +73,13 @@ class EmailNotificator(NotificatorBase):
         self._email_user = email_user
         self._email_password = email_password
 
-    def _get_smtp_session(self):
+    @staticmethod
+    def _get_smtp_session() -> smtplib.SMTP:
+        """
+        Returns Gmail SMTP session handle.
+
+        :return: Gmail SMTP session handle.
+        """
         return smtplib.SMTP('smtp.gmail.com', 587)
 
     def send_text(self, subject, message):
@@ -112,7 +127,12 @@ class PushoverNotificator(NotificatorBase):
         self._app_token = app_token
 
     @staticmethod
-    def _open_session():
+    def _open_session() -> requests.Session:
+        """
+        Opens HTTPS session.
+
+        :return: HTTPS session handle.
+        """
         return requests.Session()
 
     def send_text(self, subject: str, message: str):

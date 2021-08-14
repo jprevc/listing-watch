@@ -37,23 +37,23 @@ class NotificatorBase(ABC):
         :param item_format: Format, with which item's message will be created.
         """
 
-    def send_items(self, subject: str, items: List[dict], item_format: str, send_separate: bool=False):
+    def send_items(self, subject: str, items: List[dict], item_format: str, send_separately: bool=False):
         """
         Sends items in a form of a dictionary to recipients.
 
         :param subject: Subject for message.
         :param items: List of dictionaries, containing data as key value pairs, which will be sent to recipients.
         :param item_format: Format, with which each item's message will be created.
-        :param send_separate: If True, each item will be sent as separate message.
+        :param send_separately: If True, each item will be sent as separate message.
         """
         text = ""
         for item in items:
-            if send_separate:
+            if send_separately:
                 self._send_single_item(subject, item, item_format)
             else:
                 text += item_format.format(**item)
 
-        if not send_separate:
+        if not send_separately:
             self.send_text(subject, text)
 
 
@@ -160,10 +160,10 @@ class PushoverNotificator(NotificatorBase):
 
             session.post('https://api.pushover.net/1/messages.json', data=payload, headers={'User-Agent': 'Python'})
 
-    def send_items(self, subject, items, item_format, send_separate=False):
-        if send_separate:
+    def send_items(self, subject, items, item_format, send_separately=False):
+        if send_separately:
             # here it is assumed, that any single item's text will not exceed 1024 character limitation
-            super().send_items(subject, items, item_format, send_separate=True)
+            super().send_items(subject, items, item_format, send_separately=True)
         else:
             # pushover messages are limited to 1024 characters. Items need to be divided to separate text blocks and
             # sent separately if text would exceed that limit

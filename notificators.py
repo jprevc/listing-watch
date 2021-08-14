@@ -159,15 +159,17 @@ class PushoverNotificator(NotificatorBase):
             # pushover messages are limited to 1024 characters. Items need to be divided to separate text blocks and
             # sent separately if text would exceed that limit
 
-            # get list of indexes, where each index corresponds to group in which item should be sent. Indexes are
-            # selected according to message size limitation, such that no message will exceed 1024 characters
-            item_groups = np.cumsum([len(item_format.format(**item)) for item in items]) // 1025
+            temp_message = ""
+            for item in items:
+                item_txt = item_format.format(**item)
+                if len(temp_message + item_txt) > 1024:
+                    # if message together with new item exceeds character limit, send it without new item
+                    self.send_text(subject, temp_message)
 
-            # get list of text messages for each group
-            groups_txt_blocks = [""] * (max(item_groups) + 1)
-            for item, group in zip(items, item_groups):
-                groups_txt_blocks[group] += item_format.format(**item)
+                    # current item will be sent in the next 'block'
+                    temp_message = item_txt
+                else:
+                    temp_message += item_txt
 
-            # send messages in separate notifications
-            for txt_block in groups_txt_blocks:
-                self.send_text(subject, txt_block)
+            # send 'leftover' text
+            self.send_text(subject, temp_message)

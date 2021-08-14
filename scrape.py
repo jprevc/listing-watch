@@ -111,13 +111,12 @@ if __name__ == '__main__':
 
     # if new items have been found, send a notification and add that data to cached items
     if new_data:
-        MESSAGE_BODY = '\n'.join([spider_configuration['message_body_format'].format(**item) for item in new_data])
-
         # send message with each configured notificator
         for notificator_type_str, notificator_data in spider_configuration['notifications'].items():
             notificator = get_notificator(notificator_type_str, notificator_data['recipients'])
 
-            notificator.send_text(spider + ' news', MESSAGE_BODY)
+            notificator.send_items(spider + ' news', new_data, spider_configuration['message_body_format'],
+                                   send_separate=False)
 
             # append new items to cached ones and write all back to file
             cached_spider_data += list(new_data)

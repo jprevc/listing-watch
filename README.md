@@ -2,11 +2,13 @@
 Contains various spiders which crawl websites for new content. If any new
 content is found, users are alerted via email.
 
+
 Checkout
 ----------------
 Checkout this project with
 
     git clone https://github.com/jprevc/news_crawlers.git
+
 
 Environment configuration
 ----------------------------
@@ -16,7 +18,7 @@ Define new environment variable named NEWS_CRAWLERS_HOME and set its path to loc
 where configuration will be stored. 
 
 This location will also be used to store all crawled items (cache), so program will be 
-able to determine, whether an item is new when crawling is run again.
+able to determine, whether a crawled item is new when crawling is run again.
 
 If NEWS_CRAWLERS_HOME variable is not set, home directory will be set to project root by default 
 
@@ -26,14 +28,26 @@ Within this location, each created spider should have its own .yaml file named
 
 An example of configuration file contents (example_configuration.yaml):
 
-    email_recipients: ['jost.prevc@gmail.com']
-    email_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
+    notifications:
+      email:
+        recipients: ['jost.prevc@gmail.com']
+        message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
+      pushover:
+        recipients: ['ukdwndomjog3swwos57umfydpsa2sk']
+        send_separately: True
+        message_body_format: "Query: {query}\nPrice: {price}\n"
     urls:
       'pet_prijateljev': https://example.com/?ctl=search_ads&keywords=pet+prijateljev
       'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
 
-Email configuration
-----------------------
+
+Notification configuration
+------------------------------
+Next, you should configure notification, which will alert you about any found news. Currently, there are two options -
+Email via Gmail SMTP server or Pushover (https://pushover.net/).
+
+### Email configuration
+
 Next, you should configure email notification. This project uses gmail's SMTP server to send emails, and requires
 your account credentials. 
 
@@ -45,6 +59,20 @@ Add the following environment variables:
     EMAIL_USER - your email
     EMAIL_PASS - generated password for gmail account
 
+### Pushover configuration
+
+Pushover is a platform which enables you to easily send and receive push notifications on your smart device. 
+To get it running, you will first need to create a user account. You can sign-up this link: https://pushover.net/signup.
+When sign-up is complete, you will receive a unique user token, which you will have to copy and paste to your
+crawler configuration (see example configuration above).
+
+Next, download the Pushover app to the smart device to which you want to receive the push notifications. Once logged in, 
+you will receive push notifications when any crawler finds news.
+
+Note: Pushover trial version expires after 30 days. After that, you will need to create a one-time purchase with a cost 
+of 5$ to keep it working: https://pushover.net/pricing
+
+
 Running the crawlers
 ----------------------
 Run the scraper by executing the following command on the project root:
@@ -55,3 +83,13 @@ This will run specified spider and then send an email notification if any
 news are found.
 
 
+Adding new custom crawlers
+----------------------------
+
+New crawlers need to be added to news_crawlers/spiders folder. Crawler is a class which must subclass scrapy.Spider.
+This class needs to be written in a separate file called {spider_name}_spider.py.
+
+When crawling, crawler needs to yield all found items in a form of dictionary (see https://docs.scrapy.org/en/latest/
+for more information about how crawlers are created). Created crawler will then automatically be run when scrape.py 
+is run, which will also handle checking whether any of the crawled items are new. In this case, a notification will be
+sent to all users.

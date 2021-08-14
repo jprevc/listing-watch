@@ -2,13 +2,11 @@
 Contains various Notificator implementations.
 """
 
-
 from abc import ABC, abstractmethod
 import smtplib
 from typing import List
 
 import requests
-import numpy as np
 
 
 class NotificatorBase(ABC):
@@ -21,15 +19,12 @@ class NotificatorBase(ABC):
         self.recipients = recipients
 
     @abstractmethod
-    def send_text(self, subject, message):
+    def send_text(self, subject: str, message: str):
         """
         Sends notification.
 
         :param subject: Subject (title) of notification.
-        :type subject: str
-
         :param message: Message content.
-        :type message: str
         """
 
     def send_items(self, subject: str, items: List[dict], item_format: str, send_separate: bool=False):
@@ -59,14 +54,11 @@ class EmailNotificator(NotificatorBase):
 
     This implementation uses gmail's SMTP server to send notifications as emails to users.
 
-    This implementation requires user credentials (email address and password) to be
-    stored in environment variables as EMAIL_PASS and EMAIL_USER. To avoid storing your
+    This implementation requires user credentials (email address and password). To avoid storing your
     password in system variables, it is advised to generate a special password to be used only
     for this application. This can be done here:
 
-    https://myaccount.google.com/apppasswords and generate a new app password for your account.
-
-    This password can then safely be stored under EMAIL_PASS variable.
+    https://myaccount.google.com/apppasswords
     """
     def __init__(self, recipients, email_user, email_password):
         super().__init__(recipients)
@@ -82,15 +74,12 @@ class EmailNotificator(NotificatorBase):
         """
         return smtplib.SMTP('smtp.gmail.com', 587)
 
-    def send_text(self, subject, message):
+    def send_text(self, subject: str, message: str):
         """
         Sends email message.
 
         :param subject: Subject of email.
-        :type subject: str
-
         :param message: Email message content.
-        :type message: str
         """
         email_password = self._email_password
         email_user = self._email_user
@@ -114,15 +103,13 @@ class PushoverNotificator(NotificatorBase):
     This implementation uses Pushover (https://pushover.net/) to send push notifications to the
     recipients' mobile phones.
 
-    This implementation requires 'PUSHOVER_APP_TOKEN' variable to be stored in environment variables.
-    Value of this variable should be a pushover application token, which can be generated here:
-
+    Pushover API token can be generated here:
     https://pushover.net/apps/build
 
     :param recipients: Pushover user keys of recipients to which push notification should be sent.
-    :type recipients: list
+    :param app_token: Pushover application token.
     """
-    def __init__(self, recipients, app_token):
+    def __init__(self, recipients: list, app_token: str):
         super().__init__(recipients)
         self._app_token = app_token
 
@@ -140,7 +127,6 @@ class PushoverNotificator(NotificatorBase):
         Sends a pushover notification.
 
         :param subject: Subject of push notification.
-
         :param message: Push notification message.
         """
         session = self._open_session()

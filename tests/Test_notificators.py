@@ -1,19 +1,31 @@
 """
 Contains tests for Notificator classes.
 """
-
-
 import unittest
+from itertools import product
+
+from parameterized import parameterized
 
 from ..notificators import PushoverNotificator, EmailNotificator
 from .mocks import HttpsSessionMock, SmtpMock
-from parameterized import parameterized
 
 
 class Test_PushoverNotificator(unittest.TestCase):
     """
-    Tests for PuschoverNotificator class.
+    Tests for PushoverNotificator class.
     """
+    num_test_messages = [1, 5, 10, 100]
+    test_message_characters = [600, 300, 200]
+    num_test_users = [1, 2, 3, 4]
+
+    # create different test combinations for parameterization
+    test_combs = list(product(num_test_messages, test_message_characters, num_test_users))
+
+    comb_names = ["{}_messages_{}_chars_{}_users".format(num_messages, num_chars, num_users)
+                  for (num_messages, num_chars, num_users) in test_combs]
+
+    parameterized_val = [(comb_name, *test_comb) for comb_name, test_comb in zip(comb_names, test_combs)]
+
     def setUp(self):
         self.pushover = PushoverNotificator(['user_key_1'], 'app_token')
 
@@ -28,36 +40,55 @@ class Test_PushoverNotificator(unittest.TestCase):
         self.pushover.send_text('test_subject', 'test_message')
         self.assertEqual(self._session_mock.simulated_messages[0], 'test_message')
 
-    @parameterized.expand([('1_times_600_1_user', 1, 600, 1),
-                           ('5_times_600_2_users', 5, 600, 2),
-                           ('10_times_300_3_users', 10, 300, 3),
-                           ('100_times_200_4_users', 100, 200, 4)])
-    def test_send_items_correctly_divides_items(self, _, num_test_items, text_length, num_users):
+    @parameterized.expand(parameterized_val)
+    def test_minimal_number_of_sent_messages_when_divided(self, _, num_test_items, text_length, num_users):
         """
         Test that 'send_items' method correctly divides items if length of message exceeds 1024 characters.
         """
-        items = [{'data': "a"*text_length}]*num_test_items
-        self.pushover.recipients = ['user_key']*num_users
+        self._send_test_items(num_test_items, text_length, num_users, send_separate=False)
 
-        self.pushover.send_items('Test subject', items, '{data}')
+        # minimal needed number of messages would occur if length of messages is perfectly divisible by 1024
+        min_number_of_messages = (((text_length * num_test_items) // 1025) + 1) * num_users
+        self.assertLessEqual(min_number_of_messages, len(self._session_mock.simulated_messages))
 
-        expected_number_of_messages = (((text_length * num_test_items) // 1025) + 1) * num_users
-        self.assertEqual(expected_number_of_messages, len(self._session_mock.simulated_messages))
+    @parameterized.expand(parameterized_val)
+    def test_length_of_message_must_be_less_than_1024(self, _, num_test_items, text_length, num_users):
+        """
+        Test that 'send_items' method never sends a message where length exceeds char limit of 1024.
+        """
+        self._send_test_items(num_test_items, text_length, num_users, send_separate=False)
 
-    @parameterized.expand([('1_message_1_user', 1, 600, 1),
-                           ('5_messages_2_users', 5, 600, 2),
-                           ('10_messages_3_users', 10, 300, 3),
-                           ('100_messages_4_users', 100, 200, 4)])
+        # check that length of each message does not exceed 1024
+        for message in self._session_mock.simulated_messages:
+            self.assertLessEqual(len(message), 1024)
+
+    @parameterized.expand(parameterized_val)
+    def test_length_of_divided_messages_is_equal_to_original(self, _, num_test_items, text_length, num_users):
+        """
+        Test that total length of divided items in 'send_items' method is equal to original message.
+        """
+        self._send_test_items(num_test_items, text_length, num_users, send_separate=False)
+
+        # check that sum of all messages lengths is equal to original text length
+        messages_length_sum = sum(len(message) for message in self._session_mock.simulated_messages)
+        original_txt_length = (text_length * num_test_items * num_users)
+        self.assertEqual(original_txt_length, messages_length_sum)
+
+    @parameterized.expand(parameterized_val)
     def test_send_items_separate_correctly_separates_items(self, _, num_test_items, text_length, num_users):
         """
         Test that 'send_items' method correctly sends each item separately if that is specified.
         """
-        items = [{'data': "a" * text_length}] * num_test_items
-        self.pushover.recipients = ['user_key'] * num_users
 
-        self.pushover.send_items('Test subject', items, '{data}', send_separate=True)
+        self._send_test_items(num_test_items, text_length, num_users, send_separate=True)
 
         self.assertEqual(num_test_items * num_users, len(self._session_mock.simulated_messages))
+
+    def _send_test_items(self, num_test_items, text_length, num_users, send_separate):
+        items = [{'data': "a"*text_length}]*num_test_items
+        self.pushover.recipients = ['user_key']*num_users
+
+        self.pushover.send_items('Test subject', items, '{data}', send_separate=send_separate)
 
 
 class Test_EmailNotificator(unittest.TestCase):

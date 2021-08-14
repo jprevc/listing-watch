@@ -27,6 +27,16 @@ class NotificatorBase(ABC):
         :param message: Message content.
         """
 
+    @abstractmethod
+    def _send_single_item(self, subject: str, item: dict, item_format: str):
+        """
+        Sends single item as a message.
+
+        :param subject: Subject (title) of notification.
+        :param item: Item as a dictionary, containing data as key value pairs, which will be sent to recipients.
+        :param item_format: Format, with which item's message will be created.
+        """
+
     def send_items(self, subject: str, items: List[dict], item_format: str, send_separate: bool=False):
         """
         Sends items in a form of a dictionary to recipients.
@@ -38,11 +48,10 @@ class NotificatorBase(ABC):
         """
         text = ""
         for item in items:
-            item_text = item_format.format(**item)
             if send_separate:
-                self.send_text(subject, item_text)
+                self._send_single_item(subject, item, item_format)
             else:
-                text += item_text
+                text += item_format.format(**item)
 
         if not send_separate:
             self.send_text(subject, text)
@@ -74,6 +83,9 @@ class EmailNotificator(NotificatorBase):
         """
         return smtplib.SMTP('smtp.gmail.com', 587)
 
+    def _send_single_item(self, subject, item, item_format):
+        self.send_text(subject, item_format.format(**item))
+
     def send_text(self, subject: str, message: str):
         """
         Sends email message.
@@ -81,19 +93,16 @@ class EmailNotificator(NotificatorBase):
         :param subject: Subject of email.
         :param message: Email message content.
         """
-        email_password = self._email_password
-        email_user = self._email_user
-
         with self._get_smtp_session() as smtp:
             smtp.ehlo()
             smtp.starttls()
             smtp.ehlo()
 
-            smtp.login(user=email_user, password=email_password)
+            smtp.login(user=self._email_user, password=self._email_password)
 
             msg = f'Subject: {subject}\n\n{message}'
 
-            smtp.sendmail(email_user, self.recipients, msg.encode('utf8'))
+            smtp.sendmail(self._email_user, self.recipients, msg.encode('utf8'))
 
 
 class PushoverNotificator(NotificatorBase):
@@ -129,12 +138,26 @@ class PushoverNotificator(NotificatorBase):
         :param subject: Subject of push notification.
         :param message: Push notification message.
         """
+        self._post_message(subject, message, url=None)
+
+    def _send_single_item(self, subject, item, item_format):
+
+        # if item contains 'url' field, we can send it as URL in push notification and will be presented
+        # in designated place
+        url = item.get('url', None)
+        message = item_format.format(**item)
+        self._post_message(subject, message, url=url)
+
+    def _post_message(self, subject, message, url):
         session = self._open_session()
         for user_key in self.recipients:
             payload = {"token": self._app_token,
                        "user": user_key,
                        "title": subject,
                        "message": message}
+            if url:
+                payload['url'] = url
+
             session.post('https://api.pushover.net/1/messages.json', data=payload, headers={'User-Agent': 'Python'})
 
     def send_items(self, subject, items, item_format, send_separate=False):
@@ -152,9 +175,10 @@ class PushoverNotificator(NotificatorBase):
                     # if message together with new item exceeds character limit, send it without new item
                     self.send_text(subject, temp_message)
 
-                    # current item will be sent in the next 'block'
+                    # current item's text will be sent in the next message
                     temp_message = item_txt
                 else:
+                    # append current item's text to message
                     temp_message += item_txt
 
             # send 'leftover' text

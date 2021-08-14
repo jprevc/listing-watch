@@ -116,7 +116,7 @@ if __name__ == '__main__':
             notificator = get_notificator(notificator_type_str, notificator_data['recipients'])
 
             notificator.send_items(spider + ' news', new_data, spider_configuration['message_body_format'],
-                                   send_separate=False)
+                                   send_separate=notificator_data.get('send_separately', False))
 
             # append new items to cached ones and write all back to file
             cached_spider_data += list(new_data)

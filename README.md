@@ -20,7 +20,7 @@ where configuration will be stored.
 This location will also be used to store all crawled items (cache), so program will be 
 able to determine, whether a crawled item is new when crawling is run again.
 
-If NEWS_CRAWLERS_HOME variable is not set, home directory will be set to project root by default 
+If NEWS_CRAWLERS_HOME variable is not set, home directory will be set to project root by default.
 
 Within this location, each created spider should have its own .yaml file named
 
@@ -48,9 +48,6 @@ Email via Gmail SMTP server or Pushover (https://pushover.net/).
 
 ### Email configuration
 
-Next, you should configure email notification. This project uses gmail's SMTP server to send emails, and requires
-your account credentials. 
-
 Visit https://myaccount.google.com/apppasswords and generate a new app password for your account.
 
 After the password has been generated, scraper program will need to access it through environment variables.
@@ -62,12 +59,22 @@ Add the following environment variables:
 ### Pushover configuration
 
 Pushover is a platform which enables you to easily send and receive push notifications on your smart device. 
-To get it running, you will first need to create a user account. You can sign-up this link: https://pushover.net/signup.
-When sign-up is complete, you will receive a unique user token, which you will have to copy and paste to your
-crawler configuration (see example configuration above).
+To get it running, you will first need to create a user account. You can sign-up on this link: 
+https://pushover.net/signup. When sign-up is complete, you will receive a unique user token, which you will have to 
+copy and paste to your crawler configuration (see example configuration above). Any user that wants to receive push 
+notifications needs to create its own pushover username to receive their own user tokens, which will be stored in
+crawler configuration.
 
-Next, download the Pushover app to the smart device to which you want to receive the push notifications. Once logged in, 
-you will receive push notifications when any crawler finds news.
+Next, you should register your crawler application on pushover. To do this, visit https://pushover.net/apps/build and 
+fill out the provided form. Once your application is registered, you will receive an API token. This token then needs 
+to be stored in the environment variables under the name 'PUSHOVER_APP_TOKEN'. This needs to be done on the machine 
+where NewsCrawler will run.
+
+To receive notifications, every user should download the Pushover app to the smart device on which they want to 
+receive push notifications. Once logged in, they will receive push notifications when any crawler finds news.
+
+Android: https://play.google.com/store/apps/details?id=net.superblock.pushover  
+AppStore: https://apps.apple.com/us/app/pushover-notifications/id506088175?ls=1
 
 Note: Pushover trial version expires after 30 days. After that, you will need to create a one-time purchase with a cost 
 of 5$ to keep it working: https://pushover.net/pricing

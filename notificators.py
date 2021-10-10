@@ -37,7 +37,13 @@ class NotificatorBase(ABC):
         :param item_format: Format, with which item's message will be created.
         """
 
-    def send_items(self, subject: str, items: List[dict], item_format: str, send_separately: bool=False):
+    def send_items(
+        self,
+        subject: str,
+        items: List[dict],
+        item_format: str,
+        send_separately: bool = False,
+    ):
         """
         Sends items in a form of a dictionary to recipients.
 
@@ -69,6 +75,7 @@ class EmailNotificator(NotificatorBase):
 
     https://myaccount.google.com/apppasswords
     """
+
     def __init__(self, recipients, email_user, email_password):
         super().__init__(recipients)
         self._email_user = email_user
@@ -81,7 +88,7 @@ class EmailNotificator(NotificatorBase):
 
         :return: Gmail SMTP session handle.
         """
-        return smtplib.SMTP('smtp.gmail.com', 587)
+        return smtplib.SMTP("smtp.gmail.com", 587)
 
     def _send_single_item(self, subject, item, item_format):
         self.send_text(subject, item_format.format(**item))
@@ -100,9 +107,9 @@ class EmailNotificator(NotificatorBase):
 
             smtp.login(user=self._email_user, password=self._email_password)
 
-            msg = f'Subject: {subject}\n\n{message}'
+            msg = f"Subject: {subject}\n\n{message}"
 
-            smtp.sendmail(self._email_user, self.recipients, msg.encode('utf8'))
+            smtp.sendmail(self._email_user, self.recipients, msg.encode("utf8"))
 
 
 class PushoverNotificator(NotificatorBase):
@@ -118,6 +125,7 @@ class PushoverNotificator(NotificatorBase):
     :param recipients: Pushover user keys of recipients to which push notification should be sent.
     :param app_token: Pushover application token.
     """
+
     def __init__(self, recipients: list, app_token: str):
         super().__init__(recipients)
         self._app_token = app_token
@@ -144,21 +152,27 @@ class PushoverNotificator(NotificatorBase):
 
         # if item contains 'url' field, we can send it as URL in push notification and will be presented
         # in designated place
-        url = item.get('url', None)
+        url = item.get("url", None)
         message = item_format.format(**item)
         self._post_message(subject, message, url=url)
 
     def _post_message(self, subject, message, url):
         session = self._open_session()
         for user_key in self.recipients:
-            payload = {"token": self._app_token,
-                       "user": user_key,
-                       "title": subject,
-                       "message": message}
+            payload = {
+                "token": self._app_token,
+                "user": user_key,
+                "title": subject,
+                "message": message,
+            }
             if url:
-                payload['url'] = url
+                payload["url"] = url
 
-            session.post('https://api.pushover.net/1/messages.json', data=payload, headers={'User-Agent': 'Python'})
+            session.post(
+                "https://api.pushover.net/1/messages.json",
+                data=payload,
+                headers={"User-Agent": "Python"},
+            )
 
     def send_items(self, subject, items, item_format, send_separately=False):
         if send_separately:

@@ -36,3 +36,9 @@ repos:
   - id: mypy
     files: ^src/
     args: []
+
+- repo: https://github.com/PyCQA/pylint
+  rev: pylint-2.6.0
+  hooks:
+  - id: pylint
+    args: ["--rcfile=pylintrc"]

@@ -37,8 +37,11 @@ repos:
     files: ^src/
     args: []
 
-- repo: https://github.com/PyCQA/pylint
-  rev: v2.9.6
+- repo: local
   hooks:
   - id: pylint
+    name: pylint
+    entry: pylint
+    language: system
+    types: [python]
     args: ["--rcfile=.pylintrc"]

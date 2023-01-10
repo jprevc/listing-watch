@@ -41,7 +41,7 @@ repos:
   hooks:
   - id: pylint
     name: pylint
-    entry: pylint
+    entry: venv/Scripts/pylint.exe
     language: system
     types: [python]
     args: ["--rcfile=.pylintrc"]

@@ -1,5 +1,4 @@
-scrapy
-PyYAML
-requests
-numpy
 parameterized
+pytest
+pre-commit
+pylint

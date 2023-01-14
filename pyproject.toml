@@ -17,7 +17,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-        "scrapy",
+        "beautifulsoup4",
+        "pydantic",
         "PyYAML",
         "requests",
         "numpy",
@@ -25,9 +26,9 @@ dependencies = [
         "pytest",
     ]
 
-[tool.setuptools.packages.find]
-exclude = ["test_home"]
+[tool.setuptools]
+packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pylint", "pre-commit"]
+dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]"]
 test = ["pytest", "parameterized"]

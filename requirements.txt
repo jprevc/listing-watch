@@ -1,4 +1,0 @@
-parameterized
-pytest
-pre-commit
-pylint

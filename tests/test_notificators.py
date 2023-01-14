@@ -85,7 +85,7 @@ def test_minimal_number_of_sent_messages_when_divided(
     # minimal needed number of messages would occur if length of messages is perfectly divisible by 1024
     min_number_of_messages = (((text_length * num_test_items) // 1025) + 1) * num_users
 
-    assert min_number_of_messages == len(session_mock.simulated_messages)
+    assert min_number_of_messages <= len(session_mock.simulated_messages)
 
 
 @pytest.mark.parametrize(

@@ -32,3 +32,6 @@ packages = ["news_crawlers"]
 [project.optional-dependencies]
 dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]"]
 test = ["pytest", "parameterized"]
+
+[tool.black]
+line-length = 120

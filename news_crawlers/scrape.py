@@ -35,8 +35,7 @@ def get_cached_items(cached_items_path: str) -> list:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="News Crawlers",
-        description="Runs web crawlers which will check for updates and alert users if "
-        "there are any news.",
+        description="Runs web crawlers which will check for updates and alert users if " "there are any news.",
     )
     parser.add_argument("-c", "--config", default="news_crawlers.yaml")
     parser.add_argument("--cache", default=".nc_cache")
@@ -71,13 +70,8 @@ def main() -> None:
         if new_data:
             #
             # send message with each configured notificator
-            for (
-                notificator_type_str,
-                notificator_data,
-            ) in spider_configuration.notifications.items():
-                notificator = notificators.get_notificator_by_name(
-                    notificator_type_str
-                )(notificator_data)
+            for (notificator_type_str, notificator_data) in spider_configuration.notifications.items():
+                notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
 
                 notificator.send_items(
                     spider_name + " news",

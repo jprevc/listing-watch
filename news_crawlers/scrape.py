@@ -68,7 +68,6 @@ def main() -> None:
 
         # if new items have been found, send a notification and add that data to cached items
         if new_data:
-            #
             # send message with each configured notificator
             for (notificator_type_str, notificator_data) in spider_configuration.notifications.items():
                 notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)

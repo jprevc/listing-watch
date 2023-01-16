@@ -30,7 +30,7 @@ dependencies = [
 packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]", "mypy"]
+dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]", "mypy", "tox"]
 test = ["pytest", "parameterized"]
 
 [tool.black]

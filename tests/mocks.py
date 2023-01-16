@@ -3,6 +3,9 @@ Contains various mock classes which can be used in tests.
 """
 
 
+# pylint: disable=unused-argument
+
+
 class HttpsSessionMock:
     """
     HTTPS Session mock class.

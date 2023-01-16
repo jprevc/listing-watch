@@ -2,12 +2,14 @@
 Contains various Notificator implementations.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import smtplib
-from typing import List, Type
 import sys
 import os
 import inspect
+
 import requests
 
 
@@ -47,7 +49,7 @@ class Notificator(ABC):
     def send_items(
         self,
         subject: str,
-        items: List[dict],
+        items: list[dict],
         item_format: str,
         send_separately: bool = False,
     ):
@@ -210,7 +212,7 @@ class PushoverNotificator(Notificator):
             self.send_text(subject, temp_message)
 
 
-def get_notificator_by_name(name: str) -> Type[Notificator]:
+def get_notificator_by_name(name: str) -> type[Notificator]:
     """
     Finds notificator class with the 'name' attribute equal to the one specified.
 
@@ -233,7 +235,7 @@ def handle_secrets_in_configuration(configuration: dict[str, str]) -> dict[str, 
     out_dict = {}
     for key, val in configuration.items():
         if val.startswith("__env_"):
-            out_dict[key] = os.environ[val.removeprefix("__env_")]
+            out_dict[key] = os.environ[val.replace("__env_", "")]
         else:
             out_dict[key] = val
     return out_dict

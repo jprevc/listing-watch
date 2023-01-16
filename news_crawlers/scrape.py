@@ -32,7 +32,9 @@ def get_cached_items(cached_items_path: str) -> list:
     return cached_data
 
 
-def scrape(spiders_to_run: Optional[list[str]], config_path: Optional[str], cache_path: Optional[str]) -> None:
+def scrape(
+    spiders_to_run: Optional[list[str]], config_path: str = "news_crawlers.yaml", cache_path: str = ".nc_cache"
+) -> None:
 
     # create __cache__ folder in which *_cache.json files will be stored
     if not os.path.exists(cache_path):

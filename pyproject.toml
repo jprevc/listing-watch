@@ -30,8 +30,16 @@ dependencies = [
 packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]"]
+dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]", "mypy"]
 test = ["pytest", "parameterized"]
 
 [tool.black]
 line-length = 120
+
+[mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true

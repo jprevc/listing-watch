@@ -4,7 +4,7 @@ Main module. Runs defined crawler and send notifications to user, if any news ar
 
 import os
 import json
-import argparse
+from typing import Optional
 
 import yaml
 
@@ -32,27 +32,22 @@ def get_cached_items(cached_items_path: str) -> list:
     return cached_data
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="News Crawlers",
-        description="Runs web crawlers which will check for updates and alert users if " "there are any news.",
-    )
-    parser.add_argument("-c", "--config", default="news_crawlers.yaml")
-    parser.add_argument("--cache", default=".nc_cache")
-
-    args = parser.parse_args()
+def scrape(spiders_to_run: Optional[list[str]], config_path: Optional[str], cache_path: Optional[str]) -> None:
 
     # create __cache__ folder in which *_cache.json files will be stored
-    if not os.path.exists(args.cache):
-        os.makedirs(args.cache)
+    if not os.path.exists(cache_path):
+        os.makedirs(cache_path)
 
     # read configuration
-    with open(args.config, encoding="utf8") as file:
+    with open(config_path, encoding="utf8") as file:
         spider_configuration_dict = yaml.safe_load(file)
 
-    for spider_name, spider_config_dict in spider_configuration_dict.items():
+    if spiders_to_run is None:
+        spiders_to_run = spider_configuration_dict.keys()
 
-        spider_configuration = configuration.NewsCrawlerConfig(**spider_config_dict)
+    for spider_name in spiders_to_run:
+
+        spider_configuration = configuration.NewsCrawlerConfig(**spider_configuration_dict[spider_name])
 
         spider = spiders.get_spider_by_name(spider_name)(spider_configuration)
 
@@ -60,7 +55,7 @@ def main() -> None:
         crawled_data = spider.run()
 
         # get previously crawled cached items
-        cached_json = os.path.join(args.cache, spider_name + "_cached.json")
+        cached_json = os.path.join(cache_path, spider_name + "_cached.json")
         cached_spider_data = get_cached_items(cached_json)
 
         # check which crawled items are new
@@ -83,7 +78,3 @@ def main() -> None:
                 cached_spider_data += list(new_data)
                 with open(cached_json, "w+", encoding="utf8") as file:
                     json.dump(cached_spider_data, file)
-
-
-if __name__ == "__main__":
-    main()

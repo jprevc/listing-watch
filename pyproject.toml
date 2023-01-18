@@ -32,7 +32,7 @@ dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox"]
 test = ["pytest"]
 
 [project.scripts]
-news_crawlers = "news_crawlers.main:main"
+news_crawlers = "news_crawlers.__main__:main"
 
 [tool.black]
 line-length = 120

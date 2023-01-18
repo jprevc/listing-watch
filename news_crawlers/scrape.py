@@ -4,13 +4,14 @@ Main module. Runs defined crawler and send notifications to user, if any news ar
 
 import os
 import json
-from typing import Optional
-
-import yaml
+import pathlib
+from typing import Optional, Any
 
 from news_crawlers import notificators
 from news_crawlers import spiders
 from news_crawlers import configuration
+
+DEFAULT_CACHE_PATH = pathlib.Path(__file__).parent.parent / "data" / ".nc_cache"
 
 
 def get_cached_items(cached_items_path: str) -> list:
@@ -33,23 +34,20 @@ def get_cached_items(cached_items_path: str) -> list:
 
 
 def scrape(
-    spiders_to_run: Optional[list[str]], config_path: str = "news_crawlers.yaml", cache_path: str = ".nc_cache"
+    spiders_to_run: Optional[list[str]],
+    spiders_configuration: dict[str, Any],
+    cache_path: pathlib.Path = DEFAULT_CACHE_PATH,
 ) -> None:
-
-    # create __cache__ folder in which *_cache.json files will be stored
+    # create cache folder in which *_cache.json files will be stored
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)
 
-    # read configuration
-    with open(config_path, encoding="utf8") as file:
-        spider_configuration_dict = yaml.safe_load(file)
-
     if spiders_to_run is None:
-        spiders_to_run = spider_configuration_dict.keys()
+        spiders_to_run = list(spiders_configuration.keys())
 
     for spider_name in spiders_to_run:
 
-        spider_configuration = configuration.NewsCrawlerConfig(**spider_configuration_dict[spider_name])
+        spider_configuration = configuration.NewsCrawlerConfig(**spiders_configuration[spider_name])
 
         spider = spiders.get_spider_by_name(spider_name)(spider_configuration)
 

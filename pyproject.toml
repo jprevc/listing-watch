@@ -21,9 +21,7 @@ dependencies = [
         "pydantic",
         "PyYAML",
         "requests",
-        "numpy",
-        "parameterized",
-        "pytest",
+        "schedule"
     ]
 
 [tool.setuptools]

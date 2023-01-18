@@ -28,8 +28,8 @@ dependencies = [
 packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pytest", "parameterized", "pylint", "pre-commit", "black[d]", "mypy", "tox"]
-test = ["pytest", "parameterized"]
+dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox"]
+test = ["pytest"]
 
 [project.scripts]
 news_crawlers = "news_crawlers.main:main"

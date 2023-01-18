@@ -18,7 +18,6 @@ def test_schedule(tmp_path: pathlib.Path, monkeypatch):
         start_time = time.time()
         while time.time() - start_time < 2.1:
             schedule.run_pending()
-            time.sleep(0.5)
 
     monkeypatch.setattr(scheduler, "_run_pending_func", mock_run_pending)
 

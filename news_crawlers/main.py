@@ -14,7 +14,7 @@ def main() -> None:
     scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.add_argument("-s", "--spider", required=False, action="append")
     scrape_parser.add_argument("-c", "--config", default="news_crawlers.yaml")
-    parser.add_argument("--cache", default=".nc_cache")
+    scrape_parser.add_argument("--cache", default=".nc_cache")
 
     scrape_subparsers = scrape_parser.add_subparsers(dest="scrape_command")
     schedule_parser = scrape_subparsers.add_parser("schedule")

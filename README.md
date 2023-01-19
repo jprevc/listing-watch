@@ -17,11 +17,21 @@ After installation, News Crawlers can be run from CLI, to view help you can writ
 
 Configuration
 ----------------------------
-NewsCrawlers's configuration if provided with a *news_crawlers.yaml* file.
+NewsCrawlers's configuration is defined with a *news_crawlers.yaml* file.
 
 Configuration file path can then be provided via CLI, like this:
 
     python -m news_crawlers -c {news_crawlers.yaml path}
+
+If path is not provided, application will search the file in *config* folder (if it exists) and in the current working
+directory.
+
+When spider is run, it will append any new items found in *.nc_cache* folder. Location of that folder can be customized
+with a --cache option, like this
+
+python -m news_crawlers --cache {data path}
+
+If not specified, application will put cache to *data/.nc_cache*, relative to current working directory.
 
 Within the configuration file, there should be a *spiders* segment, where spiders and their configurations are listed,
 for example:

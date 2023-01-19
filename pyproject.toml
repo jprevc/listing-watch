@@ -6,28 +6,42 @@ build-backend = "setuptools.build_meta"
 name = "news_crawlers"
 version = "1.0.0"
 authors = [
-    {name = "Jost Prevc", email = "jost.prevc@gmail.com"},
+    { name = "Jost Prevc", email = "jost.prevc@gmail.com" },
 ]
 description = "An extensible python library to create web crawlers which alert users on news."
 readme = "README.md"
 requires-python = ">=3.7"
 keywords = ["crawler", "news"]
-license = {text = "MIT"}
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-        "scrapy",
-        "PyYAML",
-        "requests",
-        "numpy",
-        "parameterized",
-        "pytest",
-    ]
+    "beautifulsoup4",
+    "pydantic",
+    "PyYAML",
+    "requests",
+    "schedule"
+]
 
-[tool.setuptools.packages.find]
-exclude = ["test_home"]
+[tool.setuptools]
+packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pylint", "pre-commit"]
-test = ["pytest", "parameterized"]
+dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox",
+       "types-beautifulsoup4", "types-requests", "types-PyYAML"]
+test = ["pytest"]
+
+[project.scripts]
+news_crawlers = "news_crawlers.__main__:main"
+
+[tool.black]
+line-length = 120
+
+[mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true

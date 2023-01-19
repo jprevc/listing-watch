@@ -2,3 +2,6 @@
 **/__pycache__/**
 **/*_cached.json
 /venv/**
+/news_crawlers.egg-info/**
+/build/**
+/dist/**

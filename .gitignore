@@ -4,3 +4,4 @@
 /venv/**
 /news_crawlers.egg-info/**
 /build/**
+/dist/**

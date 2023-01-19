@@ -49,7 +49,7 @@ def scrape(
 
         spider_configuration = configuration.NewsCrawlerConfig(**spiders_configuration[spider_name])
 
-        spider = spiders.get_spider_by_name(spider_name)(spider_configuration)
+        spider = spiders.get_spider_by_name(spider_name)(spider_configuration.urls)
 
         # run spider to acquire crawled data
         crawled_data = spider.run()

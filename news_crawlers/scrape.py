@@ -11,7 +11,7 @@ from news_crawlers import notificators
 from news_crawlers import spiders
 from news_crawlers import configuration
 
-DEFAULT_CACHE_PATH = pathlib.Path(__file__).parent.parent / "data" / ".nc_cache"
+DEFAULT_CACHE_PATH = pathlib.Path("data") / ".nc_cache"
 
 
 def get_cached_items(cached_items_path: str) -> list:
@@ -38,6 +38,7 @@ def scrape(
     spiders_configuration: dict[str, Any],
     cache_path: pathlib.Path = DEFAULT_CACHE_PATH,
 ) -> None:
+
     # create cache folder in which *_cache.json files will be stored
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)

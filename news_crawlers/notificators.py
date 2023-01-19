@@ -2,21 +2,30 @@
 Contains various Notificator implementations.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import smtplib
-from typing import List
+import sys
+import os
+import inspect
 
 import requests
 
 
-class NotificatorBase(ABC):
+class Notificator(ABC):
     """
     Notificator base class. This class is meant to be subclassed for each implementation of different notification
     options.
     """
 
-    def __init__(self, recipients):
-        self.recipients = recipients
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+    def __init__(self, configuration: dict[str, str]):
+        self.configuration = handle_secrets_in_configuration(configuration)
 
     @abstractmethod
     def send_text(self, subject: str, message: str):
@@ -37,7 +46,13 @@ class NotificatorBase(ABC):
         :param item_format: Format, with which item's message will be created.
         """
 
-    def send_items(self, subject: str, items: List[dict], item_format: str, send_separately: bool=False):
+    def send_items(
+        self,
+        subject: str,
+        items: list[dict],
+        item_format: str,
+        send_separately: bool = False,
+    ):
         """
         Sends items in a form of a dictionary to recipients.
 
@@ -57,7 +72,7 @@ class NotificatorBase(ABC):
             self.send_text(subject, text)
 
 
-class EmailNotificator(NotificatorBase):
+class EmailNotificator(Notificator):
     """
     Email notification implementation.
 
@@ -69,10 +84,13 @@ class EmailNotificator(NotificatorBase):
 
     https://myaccount.google.com/apppasswords
     """
-    def __init__(self, recipients, email_user, email_password):
-        super().__init__(recipients)
-        self._email_user = email_user
-        self._email_password = email_password
+
+    name = "email"
+
+    def __init__(self, configuration):
+        super().__init__(configuration)
+        self._email_user = self.configuration["email_user"]
+        self._email_password = self.configuration["email_password"]
 
     @staticmethod
     def _get_smtp_session() -> smtplib.SMTP:
@@ -81,7 +99,7 @@ class EmailNotificator(NotificatorBase):
 
         :return: Gmail SMTP session handle.
         """
-        return smtplib.SMTP('smtp.gmail.com', 587)
+        return smtplib.SMTP("smtp.gmail.com", 587)
 
     def _send_single_item(self, subject, item, item_format):
         self.send_text(subject, item_format.format(**item))
@@ -100,12 +118,16 @@ class EmailNotificator(NotificatorBase):
 
             smtp.login(user=self._email_user, password=self._email_password)
 
-            msg = f'Subject: {subject}\n\n{message}'
+            msg = f"Subject: {subject}\n\n{message}"
 
-            smtp.sendmail(self._email_user, self.recipients, msg.encode('utf8'))
+            smtp.sendmail(
+                self._email_user,
+                self.configuration["recipients"].split(","),
+                msg.encode("utf8"),
+            )
 
 
-class PushoverNotificator(NotificatorBase):
+class PushoverNotificator(Notificator):
     """
     Pushover notification implementation.
 
@@ -118,9 +140,8 @@ class PushoverNotificator(NotificatorBase):
     :param recipients: Pushover user keys of recipients to which push notification should be sent.
     :param app_token: Pushover application token.
     """
-    def __init__(self, recipients: list, app_token: str):
-        super().__init__(recipients)
-        self._app_token = app_token
+
+    name = "pushover"
 
     @staticmethod
     def _open_session() -> requests.Session:
@@ -144,21 +165,27 @@ class PushoverNotificator(NotificatorBase):
 
         # if item contains 'url' field, we can send it as URL in push notification and will be presented
         # in designated place
-        url = item.get('url', None)
+        url = item.get("url", None)
         message = item_format.format(**item)
         self._post_message(subject, message, url=url)
 
     def _post_message(self, subject, message, url):
         session = self._open_session()
-        for user_key in self.recipients:
-            payload = {"token": self._app_token,
-                       "user": user_key,
-                       "title": subject,
-                       "message": message}
+        for user_key in self.configuration["recipients"].split(","):
+            payload = {
+                "token": self.configuration["app_token"],
+                "user": user_key,
+                "title": subject,
+                "message": message,
+            }
             if url:
-                payload['url'] = url
+                payload["url"] = url
 
-            session.post('https://api.pushover.net/1/messages.json', data=payload, headers={'User-Agent': 'Python'})
+            session.post(
+                "https://api.pushover.net/1/messages.json",
+                data=payload,
+                headers={"User-Agent": "Python"},
+            )
 
     def send_items(self, subject, items, item_format, send_separately=False):
         if send_separately:
@@ -183,3 +210,32 @@ class PushoverNotificator(NotificatorBase):
 
             # send 'leftover' text
             self.send_text(subject, temp_message)
+
+
+def get_notificator_by_name(name: str) -> type[Notificator]:
+    """
+    Finds notificator class with the 'name' attribute equal to the one specified.
+
+    :param name: Value of the 'name' attribute within the notificator class to match.
+
+    :return: Notificator class.
+
+    :raises KeyError: If notificator could not be found.
+    """
+    for _, obj in inspect.getmembers(sys.modules[__name__]):
+        if inspect.isclass(obj) and issubclass(obj, Notificator) and obj.name == name:
+            return obj
+    raise KeyError(f"Could not find notificator with name attribute set to {name}.")
+
+
+def handle_secrets_in_configuration(configuration: dict[str, str]) -> dict[str, str]:
+    """
+    Replaces dictionary values starting with __env_ with values from environment variables.
+    """
+    out_dict = {}
+    for key, val in configuration.items():
+        if val.startswith("__env_"):
+            out_dict[key] = os.environ[val.replace("__env_", "")]
+        else:
+            out_dict[key] = val
+    return out_dict

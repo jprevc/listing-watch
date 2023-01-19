@@ -2,17 +2,23 @@
 Contains various mock classes which can be used in tests.
 """
 
+
+# pylint: disable=unused-argument
+
+
 class HttpsSessionMock:
     """
     HTTPS Session mock class.
     """
+
     def __init__(self):
         self.simulated_messages = []
 
     def post(self, url, data, headers):
-        self.simulated_messages.append(data['message'])
+        self.simulated_messages.append(data["message"])
 
-class SmtpMock():
+
+class SmtpMock:
     """
     SMTP mock class
     """

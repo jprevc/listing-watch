@@ -25,7 +25,7 @@ def get_test_messages_combinations() -> list[tuple[str, int, int, int]]:
         for (num_messages, num_chars, num_users) in test_combs
     ]
 
-    return [(comb_name, *test_comb) for comb_name, test_comb in zip(comb_names, test_combs)]
+    return [(comb_name, *test_comb) for comb_name, test_comb in zip(comb_names, test_combs)]  # noqa
 
 
 @pytest.fixture(name="session_mock")
@@ -34,13 +34,12 @@ def session_mock_fixture() -> HttpsSessionMock:
 
 
 @pytest.fixture(name="pushover_notificator")
-def pushover_notificator_fixture(session_mock: HttpsSessionMock) -> notificators.PushoverNotificator:
+def pushover_notificator_fixture(session_mock: HttpsSessionMock, monkeypatch) -> notificators.PushoverNotificator:
     config = {"app_token": "app_token", "recipients": "user_key_1"}
 
     pushover = notificators.PushoverNotificator(config)
 
-    # override _open_session with mocked version
-    pushover._open_session = lambda: session_mock  # pylint: disable=protected-access
+    monkeypatch.setattr(pushover, "_open_session", lambda: session_mock)
 
     return pushover
 
@@ -156,7 +155,7 @@ def smtp_mock_fixture() -> SmtpMock:
 
 
 @pytest.fixture(name="email_notificator")
-def email_notificator_fixture(smtp_mock: SmtpMock) -> notificators.EmailNotificator:
+def email_notificator_fixture(smtp_mock: SmtpMock, monkeypatch) -> notificators.EmailNotificator:
     configuration = {
         "recipients": "user_key_1",
         "email_user": "test_email_user",
@@ -165,8 +164,7 @@ def email_notificator_fixture(smtp_mock: SmtpMock) -> notificators.EmailNotifica
 
     email = notificators.EmailNotificator(configuration)
 
-    # override _get_smtp_session with mocked version
-    email._get_smtp_session = lambda: smtp_mock  # pylint: disable=protected-access
+    monkeypatch.setattr(email, "_get_smtp_session", lambda: smtp_mock)
 
     return email
 

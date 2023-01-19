@@ -51,7 +51,6 @@ def scrape(
 
         spider = spiders.get_spider_by_name(spider_name)(spider_configuration.urls)
 
-        # run spider to acquire crawled data
         crawled_data = spider.run()
 
         # get previously crawled cached items

@@ -6,29 +6,30 @@ build-backend = "setuptools.build_meta"
 name = "news_crawlers"
 version = "1.0.0"
 authors = [
-    {name = "Jost Prevc", email = "jost.prevc@gmail.com"},
+    { name = "Jost Prevc", email = "jost.prevc@gmail.com" },
 ]
 description = "An extensible python library to create web crawlers which alert users on news."
 readme = "README.md"
 requires-python = ">=3.7"
 keywords = ["crawler", "news"]
-license = {text = "MIT"}
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-        "beautifulsoup4",
-        "pydantic",
-        "PyYAML",
-        "requests",
-        "schedule"
-    ]
+    "beautifulsoup4",
+    "pydantic",
+    "PyYAML",
+    "requests",
+    "schedule"
+]
 
 [tool.setuptools]
 packages = ["news_crawlers"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox"]
+dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox",
+       "types-beautifulsoup4", "types-requests", "types-PyYAML"]
 test = ["pytest"]
 
 [project.scripts]

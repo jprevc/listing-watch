@@ -8,4 +8,4 @@ VOLUME app/data app/config
 
 RUN ["python3", "-m", "pip", "install", "-e", "."]
 
-CMD ["python3", "-m", "news_crawlers",  "scrape"]
+ENTRYPOINT ["python3", "-m", "news_crawlers"]

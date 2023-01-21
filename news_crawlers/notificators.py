@@ -136,9 +136,6 @@ class PushoverNotificator(Notificator):
 
     Pushover API token can be generated here:
     https://pushover.net/apps/build
-
-    :param recipients: Pushover user keys of recipients to which push notification should be sent.
-    :param app_token: Pushover application token.
     """
 
     name = "pushover"
@@ -231,11 +228,23 @@ def get_notificator_by_name(name: str) -> type[Notificator]:
 def handle_secrets_in_configuration(configuration: dict[str, str]) -> dict[str, str]:
     """
     Replaces dictionary values starting with __env_ with values from environment variables.
+
+    :param configuration: Notificator configuration dictionary.
+
+    :return: Notificator configuration dictionary, where all __env_* values are replaced with values from
+             environment variables.
+
+    :raises KeyError: If value could not be found in environment variables.
     """
+
     out_dict = {}
     for key, val in configuration.items():
         if val.startswith("__env_"):
-            out_dict[key] = os.environ[val.replace("__env_", "")]
+            env_var = val.replace("__env_", "")
+            try:
+                out_dict[key] = os.environ[env_var]
+            except KeyError as exc:
+                raise KeyError(f"Could not find {env_var} in environment variables.") from exc
         else:
             out_dict[key] = val
     return out_dict

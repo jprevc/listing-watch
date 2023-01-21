@@ -27,7 +27,7 @@ def main() -> None:
         description="Runs web crawlers which will check for updates and alert users if " "there are any news.",
     )
 
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(dest="command", required=True)
     scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.add_argument("-s", "--spider", required=False, action="append")
     scrape_parser.add_argument("-c", "--config", required=False, default=DEFAULT_CONFIG_PATH)

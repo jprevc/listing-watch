@@ -7,6 +7,22 @@ from news_crawlers import scheduler
 from news_crawlers import configuration
 
 
+def read_configuration(config_path: str) -> dict:
+    # read configuration
+    with open(configuration.find_config(config_path), encoding="utf8") as file:
+        return yaml.safe_load(file)
+
+
+def run_crawlers(config_path: str, spider: str, cache: str) -> None:
+    scrape_configuration_dict = read_configuration(config_path)
+
+    spider_configuration_dict = scrape_configuration_dict["spiders"]
+
+    scrape_args_lst = [spider, spider_configuration_dict, cache]
+
+    scrape.scrape(*scrape_args_lst)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="News Crawlers",
@@ -26,26 +42,20 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # read configuration
-    with open(configuration.find_config(args.config), encoding="utf8") as file:
-        scrape_configuration_dict = yaml.safe_load(file)
-
-    spider_configuration_dict = scrape_configuration_dict["spiders"]
-
     if args.command != "scrape":
         return
 
-    scrape_args_lst = [args.spider, spider_configuration_dict, args.cache]
+    scrape_configuration_dict = read_configuration(args.config)
 
     if args.scrape_command == "schedule":
         sch_data = scheduler.ScheduleData(every=args.every, units=args.units)
     elif "schedule" in scrape_configuration_dict:
         sch_data = scheduler.ScheduleData(**scrape_configuration_dict["schedule"])
     else:
-        scrape.scrape(*scrape_args_lst)
+        run_crawlers(args.config, args.spider, args.cache)
         return
 
-    scheduler.schedule_func(lambda: scrape.scrape(*scrape_args_lst), sch_data)
+    scheduler.schedule_func(lambda: run_crawlers(args.config, args.spider, args.cache), sch_data)
 
 
 if __name__ == "__main__":

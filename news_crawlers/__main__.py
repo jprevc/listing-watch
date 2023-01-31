@@ -1,24 +1,10 @@
 import argparse
-import os.path
-import pathlib
 
 import yaml
 
 from news_crawlers import scrape
 from news_crawlers import scheduler
-
-DEFAULT_CONFIG_PATH = pathlib.Path("config") / "news_crawlers.yaml"
-
-
-def find_config(config_path: str) -> str:
-    config_path = config_path if os.path.exists(config_path) else "news_crawlers.yaml"
-
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(
-            f"Could not find configuration file on {config_path} or in current working directory " f"{os.getcwd()}."
-        )
-
-    return config_path
+from news_crawlers import configuration
 
 
 def main() -> None:
@@ -30,7 +16,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.add_argument("-s", "--spider", required=False, action="append")
-    scrape_parser.add_argument("-c", "--config", required=False, default=DEFAULT_CONFIG_PATH)
+    scrape_parser.add_argument("-c", "--config", required=False, default=configuration.DEFAULT_CONFIG_PATH)
     scrape_parser.add_argument("--cache", required=False, default=scrape.DEFAULT_CACHE_PATH)
 
     scrape_subparsers = scrape_parser.add_subparsers(dest="scrape_command")
@@ -41,7 +27,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # read configuration
-    with open(find_config(args.config), encoding="utf8") as file:
+    with open(configuration.find_config(args.config), encoding="utf8") as file:
         scrape_configuration_dict = yaml.safe_load(file)
 
     spider_configuration_dict = scrape_configuration_dict["spiders"]

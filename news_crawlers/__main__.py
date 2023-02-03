@@ -27,7 +27,7 @@ def run_crawlers(config_path: str, spider: str, cache: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="News Crawlers",
-        description="Runs web crawlers which will check for updates and alert users if " "there are any news.",
+        description="Runs web crawlers which will check for updates and alert users if there are any news.",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)

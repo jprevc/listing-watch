@@ -1,4 +1,5 @@
 import argparse
+from typing import Optional
 
 import yaml
 
@@ -7,7 +8,7 @@ from news_crawlers import scheduler
 from news_crawlers import configuration
 
 
-def read_configuration(config_path: str) -> dict:
+def read_configuration(config_path: Optional[str] = None) -> dict:
     # read configuration
     with open(configuration.find_config(config_path), encoding="utf8") as file:
         return yaml.safe_load(file)
@@ -32,7 +33,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.add_argument("-s", "--spider", required=False, action="append")
-    scrape_parser.add_argument("-c", "--config", required=False, default=configuration.DEFAULT_CONFIG_PATH)
+    scrape_parser.add_argument("-c", "--config", required=False)
     scrape_parser.add_argument("--cache", required=False, default=scrape.DEFAULT_CACHE_PATH)
 
     scrape_subparsers = scrape_parser.add_subparsers(dest="scrape_command")

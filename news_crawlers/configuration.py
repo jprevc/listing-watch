@@ -1,28 +1,28 @@
-# from __future__ import annotations
-
 import os
 import pathlib
-from typing import Union, Dict
+from typing import Union, Dict, Optional
 
 import pydantic
 
 DEFAULT_CONFIG_PATH = pathlib.Path("config") / "news_crawlers.yaml"
 
 
-def find_config(config_path: Union[str, pathlib.Path]) -> pathlib.Path:
-    config_path = pathlib.Path(config_path)
+def find_config(config_path: Optional[Union[str, pathlib.Path]] = None) -> pathlib.Path:
+    def_config_paths: list[Union[str, pathlib.Path]] = [DEFAULT_CONFIG_PATH, "news_crawlers.yaml"]
 
-    if config_path != DEFAULT_CONFIG_PATH and not os.path.exists(config_path):
-        raise FileNotFoundError(f"Could not find configuration file on {config_path}")
+    if config_path is not None:
+        config_path = pathlib.Path(config_path)
+        if config_path.exists():
+            return config_path
+        raise FileNotFoundError(f"Could not find configuration file {config_path}.")
 
-    config_path = DEFAULT_CONFIG_PATH if DEFAULT_CONFIG_PATH.exists() else pathlib.Path("news_crawlers.yaml")
+    for def_config_path in def_config_paths:
+        if pathlib.Path(def_config_path).exists():
+            return pathlib.Path(def_config_path)
 
-    if not config_path.exists():
-        raise FileNotFoundError(
-            f"Could not find configuration file on {config_path} or in current working directory {os.getcwd()}."
-        )
-
-    return config_path
+    raise FileNotFoundError(
+        f"Could not find configuration file on {config_path} or in current working directory {os.getcwd()}."
+    )
 
 
 class NewsCrawlerConfig(pydantic.BaseModel):

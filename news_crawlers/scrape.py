@@ -1,6 +1,7 @@
 """
 Main module. Runs defined crawler and send notifications to user, if any news are found.
 """
+from __future__ import annotations
 
 import json
 import pathlib

@@ -1,21 +1,23 @@
+from __future__ import annotations
+
 import argparse
 import pathlib
-from typing import Optional
-import logging
+from typing import Sequence
 import logging.handlers
+import importlib_metadata
+
 import yaml
 
 from news_crawlers import scrape
 from news_crawlers import scheduler
 from news_crawlers import configuration
 
+__version__ = importlib_metadata.version("news_crawlers")
 
 logger = logging.getLogger("main")
-log_handler = logging.handlers.TimedRotatingFileHandler("news_crawlers.log", when="d", interval=7)
-logger.addHandler(log_handler)
 
 
-def read_configuration(config_path: Optional[pathlib.Path] = None) -> dict:
+def read_configuration(config_path: pathlib.Path | None = None) -> dict:
     # read configuration
     found_config_path = configuration.find_config(config_path)
 
@@ -27,7 +29,7 @@ def read_configuration(config_path: Optional[pathlib.Path] = None) -> dict:
     return config_dict
 
 
-def run_crawlers(config_path: Optional[pathlib.Path], spiders_to_run: list[str], cache_folder: pathlib.Path) -> None:
+def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], cache_folder: pathlib.Path) -> None:
     logger.debug(f"Running crawlers with input parameters: {locals()}")
     scrape_configuration_dict = read_configuration(config_path)
 
@@ -53,15 +55,22 @@ def run_crawlers(config_path: Optional[pathlib.Path], spiders_to_run: list[str],
         logger.debug("Crawlers were run successfully.")
 
 
-def main() -> int:
-    logger.info("Application started.")
+def setup_logger(log_path: pathlib.Path, log_rotation_days: int) -> None:
+    log_handler = logging.handlers.TimedRotatingFileHandler(log_path, when="d", interval=log_rotation_days)
+    logger.addHandler(log_handler)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="News Crawlers",
         description="Runs web crawlers which will check for updates and alert users if there are any news.",
     )
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("-v", "--version", action="version", version=importlib_metadata.version("news_crawlers"))
+    parser.add_argument("-l", "--log", required=False, type=pathlib.Path)
+    parser.add_argument("--log_rotation_days", default=7, required=False, type=int)
+    subparsers = parser.add_subparsers(dest="command", required=False)
     scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.add_argument("-s", "--spider", required=False, action="append")
     scrape_parser.add_argument("-c", "--config", type=pathlib.Path, required=False)
@@ -72,12 +81,14 @@ def main() -> int:
     schedule_parser.add_argument("--every", required=False, default=1, type=int)
     schedule_parser.add_argument("--units", required=False, default="minutes")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    if args.log:
+        setup_logger(args.log, args.log_rotation_days)
+
+    logger.info("Application started.")
 
     logger.info(f"Running application with args: {vars(args)}")
-
-    if args.command != "scrape":
-        return 0
 
     scrape_configuration_dict = read_configuration(args.config)
 

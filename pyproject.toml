@@ -1,42 +1,19 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = [ "setuptools", "setuptools-scm",]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "news_crawlers"
-version = "3.1.2"
-authors = [
-    { name = "Jost Prevc", email = "jost.prevc@gmail.com" },
-]
+version = "3.2.0"
 description = "An extensible python library to create web crawlers which alert users on news."
 readme = "README.md"
 requires-python = ">=3.7"
-keywords = ["crawler", "news"]
-license = { text = "MIT" }
-classifiers = [
-    "Programming Language :: Python :: 3",
-]
-dependencies = [
-    "beautifulsoup4",
-    "pydantic",
-    "PyYAML",
-    "requests",
-    "schedule"
-]
-
-[tool.setuptools]
-packages = ["news_crawlers"]
-
-[project.optional-dependencies]
-dev = ["pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox",
-       "types-beautifulsoup4", "types-requests", "types-PyYAML"]
-test = ["pytest"]
-
-[project.scripts]
-news_crawlers = "news_crawlers.__main__:main"
-
-[tool.black]
-line-length = 120
+keywords = [ "crawler", "news",]
+classifiers = [ "Programming Language :: Python :: 3",]
+dependencies = [ "beautifulsoup4", "pydantic", "PyYAML", "requests", "schedule", "importlib_metadata"]
+[[project.authors]]
+name = "Jost Prevc"
+email = "jost.prevc@gmail.com"
 
 [mypy]
 check_untyped_defs = true
@@ -45,3 +22,19 @@ disallow_incomplete_defs = true
 disallow_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+dev = [ "pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+test = [ "pytest",]
+
+[project.scripts]
+news_crawlers = "news_crawlers.__main__:main"
+
+[tool.setuptools]
+packages = [ "news_crawlers",]
+
+[tool.black]
+line-length = 120

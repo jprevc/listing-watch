@@ -1,5 +1,9 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+
+ci:
+  skip: [pylint] # pylint will fail in pre-commit ci, because it doesn't have the executable
+
 repos:
 - repo: https://github.com/psf/black
   rev: 22.12.0

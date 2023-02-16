@@ -31,18 +31,16 @@ def read_configuration(config_path: pathlib.Path | None = None) -> dict:
 
 def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], cache_folder: pathlib.Path) -> None:
     logger.debug(f"Running crawlers with input parameters: {locals()}")
-    scrape_configuration_dict = read_configuration(config_path)
-
-    spider_configuration_dict = scrape_configuration_dict["spiders"]
+    scrape_configuration = configuration.NewsCrawlersConfig(**read_configuration(config_path))
 
     if spiders_to_run is None:
-        spiders_to_run = list(spider_configuration_dict.keys())
+        spiders_to_run = list(scrape_configuration.spiders.keys())
 
     try:
-        crawled_data = scrape.scrape(spiders_to_run, spider_configuration_dict, cache_folder)
+        crawled_data = scrape.scrape(spiders_to_run, scrape_configuration.spiders, cache_folder)
         logger.debug("Scraping done.")
 
-        diff = scrape.check_diff_and_notify(cache_folder, crawled_data, spider_configuration_dict, spiders_to_run)
+        diff = scrape.check_diff_and_notify(cache_folder, crawled_data, scrape_configuration.spiders, spiders_to_run)
 
         if any(crawled_values for crawled_values in diff.values()):
             logger.debug(f"Found new items: {diff}")
@@ -91,20 +89,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.info(f"Running application with args: {vars(args)}")
 
-    scrape_configuration_dict = read_configuration(args.config)
+    scrape_configuration = configuration.NewsCrawlersConfig(**read_configuration(args.config))
 
     if args.scrape_command == "schedule":
-        sch_data = scheduler.ScheduleData(every=args.every, units=args.units)
+        sch_config = configuration.ScheduleConfig(every=args.every, units=args.units)
         logger.debug(f"Scheduled crawling on every {args.every} {args.units}")
-    elif "schedule" in scrape_configuration_dict:
-        sch_data = scheduler.ScheduleData(**scrape_configuration_dict["schedule"])
-        logger.debug(f"Scheduled crawling on every {sch_data.every} {sch_data.units}")
+    elif scrape_configuration.schedule is not None:
+        sch_config = scrape_configuration.schedule
+        logger.debug(f"Scheduled crawling on every {sch_config.every} {sch_config.units}")
     else:
         logger.debug("Running crawlers without schedule.")
         run_crawlers(args.config, args.spider, args.cache)
         return 0
 
-    scheduler.schedule_func(lambda: run_crawlers(args.config, args.spider, args.cache), sch_data)
+    scheduler.schedule_func(lambda: run_crawlers(args.config, args.spider, args.cache), sch_config)
 
     return 0
 

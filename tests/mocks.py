@@ -1,6 +1,8 @@
 """
 Contains various mock classes which can be used in tests.
 """
+import dataclasses
+import pathlib
 
 
 # pylint: disable=unused-argument
@@ -43,3 +45,21 @@ class SmtpMock:
 
     def sendmail(self, user, recipients, message):
         self.simulated_messages.append(message)
+
+
+def mock_get_raw_html() -> str:
+    mock_html_path = pathlib.Path(__file__).parent / "res" / "example_test_html.html"
+
+    with open(mock_html_path, encoding="utf8") as file:
+        html_content = file.read()
+
+    return html_content
+
+
+@dataclasses.dataclass
+class MockRequestObject:
+    text = mock_get_raw_html()
+
+
+def mock_requests_get(url, headers, timeout) -> MockRequestObject:
+    return MockRequestObject()

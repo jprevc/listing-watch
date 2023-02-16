@@ -4,6 +4,7 @@ import time
 import schedule  # type: ignore
 
 from news_crawlers import scheduler
+from news_crawlers import configuration
 
 
 def write_line_to_file(file_path):
@@ -22,7 +23,7 @@ def test_schedule(tmp_path: pathlib.Path, monkeypatch):
 
     monkeypatch.setattr(scheduler, "_run_pending_func", mock_run_pending)
 
-    sch_data = scheduler.ScheduleData(every=1, units="seconds")
+    sch_data = configuration.ScheduleConfig(every=1, units="seconds")
 
     scheduler.schedule_func(lambda: write_line_to_file(tmp_file_path), sch_data)
 

@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import os
 import pathlib
 from typing import Dict, Optional
+
+from typing_extensions import Literal
 
 import pydantic
 
 DEFAULT_CONFIG_PATH = pathlib.Path("config") / "news_crawlers.yaml"
 
 
-def find_config(config_path: Optional[pathlib.Path] = None) -> pathlib.Path:
+def find_config(config_path: pathlib.Path | None = None) -> pathlib.Path:
     def_config_paths: list[pathlib.Path] = [DEFAULT_CONFIG_PATH, pathlib.Path("news_crawlers.yaml")]
 
     if config_path is not None:
@@ -25,6 +29,16 @@ def find_config(config_path: Optional[pathlib.Path] = None) -> pathlib.Path:
     )
 
 
-class NewsCrawlerConfig(pydantic.BaseModel):
+class ScheduleConfig(pydantic.BaseModel):
+    every: int = 1
+    units: Literal["seconds", "minutes", "hours", "days", "weeks"] = "minutes"
+
+
+class SpiderConfig(pydantic.BaseModel):
     notifications: dict
     urls: Dict[str, str]
+
+
+class NewsCrawlersConfig(pydantic.BaseModel):
+    schedule: Optional[ScheduleConfig]
+    spiders: Dict[str, SpiderConfig]

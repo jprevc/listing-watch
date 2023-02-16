@@ -57,6 +57,7 @@ def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], ca
 
 def setup_logger(log_path: pathlib.Path, log_rotation_days: int) -> None:
     log_handler = logging.handlers.TimedRotatingFileHandler(log_path, when="d", interval=log_rotation_days)
+    log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
     logger.addHandler(log_handler)
 
 

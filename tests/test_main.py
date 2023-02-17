@@ -72,10 +72,10 @@ def test_running_scrape_command_returns_expected_items(monkeypatch, tmp_path: pa
         )
     )
 
-    cache_file = tmp_path / ".nc_cache" / "example_cached.json"
-    assert cache_file.exists()
+    cache_file_path = tmp_path / ".nc_cache" / "example_cached.json"
+    assert cache_file_path.exists()
 
-    with open(cache_file, encoding="utf8") as cache_file:
+    with open(cache_file_path, encoding="utf8") as cache_file:
         listings = json.load(cache_file)
 
     assert len(listings) == 2

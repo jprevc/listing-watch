@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import re
 
@@ -6,6 +7,7 @@ import requests
 import pytest
 
 from news_crawlers.__main__ import main
+from news_crawlers import notificators
 from tests import mocks
 
 # pylint: disable=unused-argument
@@ -19,7 +21,22 @@ def dummy_config_fixture(tmp_path: pathlib.Path):
 @pytest.fixture(name="example_dummy_config")
 def example_dummy_config_fixture(tmp_path: pathlib.Path):
     _create_dummy_config(
-        tmp_path / "news_crawlers.yaml", {"spiders": {"example": {"urls": {"dummy_url": ""}, "notifications": {}}}}
+        tmp_path / "news_crawlers.yaml",
+        {
+            "spiders": {
+                "example": {
+                    "urls": {"dummy_url": ""},
+                    "notifications": {
+                        "email": {
+                            "email_user": "__env_EMAIL_USER",
+                            "email_password": "__env_EMAIL_PASS",
+                            "recipients": "dummy_recipient",
+                            "message_body_format": "Query: {query}\nURL: {url}\nTitle: {title}\nPrice: {price}\n",
+                        }
+                    },
+                }
+            }
+        },
     )
 
 
@@ -59,6 +76,10 @@ def test_log_option_creates_log_file(dummy_config, tmp_path: pathlib.Path):
 
 def test_running_scrape_command_returns_expected_items(monkeypatch, tmp_path: pathlib.Path, example_dummy_config):
     monkeypatch.setattr(requests, "get", mocks.mock_requests_get)
+    monkeypatch.setattr(notificators.EmailNotificator, "send_text", mocks.send_text_mock)
+
+    envs = {"EMAIL_USER": "dummy_email", "EMAIL_PASS": "dummy_pass"}
+    monkeypatch.setattr(os, "environ", envs)
 
     main(
         (

@@ -63,3 +63,7 @@ class MockRequestObject:
 
 def mock_requests_get(url, headers, timeout) -> MockRequestObject:
     return MockRequestObject()
+
+
+def send_text_mock(obj, subject, message):
+    pass

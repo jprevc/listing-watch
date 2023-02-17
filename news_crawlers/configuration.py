@@ -35,7 +35,7 @@ class ScheduleConfig(pydantic.BaseModel):
 
 
 class SpiderConfig(pydantic.BaseModel):
-    notifications: dict
+    notifications: Dict[str, Dict[str, str]]
     urls: Dict[str, str]
 
 

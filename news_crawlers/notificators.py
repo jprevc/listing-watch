@@ -91,6 +91,10 @@ class EmailNotificator(Notificator):
         super().__init__(configuration)
         self._email_user = self.configuration["email_user"]
         self._email_password = self.configuration["email_password"]
+        self.recipients = self.configuration["recipients"]
+
+        if isinstance(self.recipients, str):
+            self.recipients = self.recipients.split(",")
 
     @staticmethod
     def _get_smtp_session() -> smtplib.SMTP:
@@ -122,7 +126,7 @@ class EmailNotificator(Notificator):
 
             smtp.sendmail(
                 self._email_user,
-                self.configuration["recipients"].split(","),
+                self.recipients,
                 msg.encode("utf8"),
             )
 
@@ -168,7 +172,12 @@ class PushoverNotificator(Notificator):
 
     def _post_message(self, subject, message, url):
         session = self._open_session()
-        for user_key in self.configuration["recipients"].split(","):
+        recipients = self.configuration["recipients"]
+
+        if isinstance(recipients, str):
+            recipients = recipients.split(",")
+
+        for user_key in recipients:
             payload = {
                 "token": self.configuration["app_token"],
                 "user": user_key,

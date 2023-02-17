@@ -30,7 +30,7 @@ def example_dummy_config_fixture(tmp_path: pathlib.Path):
                         "email": {
                             "email_user": "__env_EMAIL_USER",
                             "email_password": "__env_EMAIL_PASS",
-                            "recipients": "dummy_recipient",
+                            "recipients": "dummy_recipient_1,dummy_recipient_2",
                             "message_body_format": "Query: {query}\nURL: {url}\nTitle: {title}\nPrice: {price}\n",
                         }
                     },

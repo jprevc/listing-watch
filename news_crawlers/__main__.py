@@ -46,7 +46,7 @@ def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], ca
         # send notifications to users (only if difference with cached data is found)
         scrape.notify(diff, scrape_configuration.spiders)
 
-        if any(crawled_values for crawled_values in diff.values()):
+        if diff:
             logger.debug(f"Found new items: {diff}")
         else:
             logger.debug("No new items were found.")

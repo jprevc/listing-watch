@@ -72,10 +72,9 @@ def check_diff(
 
         new_data = [item for item in crawled_spider_items if item not in cached_spider_data]
 
-        diff[spider_name] = new_data
-
         # if new items have been found, add that data to cached items
         if new_data:
+            diff[spider_name] = new_data
             # write old + new items to cache file
             with open(cache_file, "w+", encoding="utf8") as file:
                 json.dump(cached_spider_data + new_data, file)

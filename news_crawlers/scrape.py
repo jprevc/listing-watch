@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from typing import Dict, List
 
 from news_crawlers import notificators
 from news_crawlers import spiders
@@ -12,7 +13,7 @@ from news_crawlers import configuration
 
 DEFAULT_CACHE_PATH = pathlib.Path("data") / ".nc_cache"
 
-CrawlData = dict[str, list[dict]]
+CrawlData = Dict[str, List[dict]]
 
 
 def get_cached_items(cached_items_path: pathlib.Path) -> list:

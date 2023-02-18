@@ -74,7 +74,7 @@ def check_diff(
 
         diff[spider_name] = new_data
 
-        # if new items have been found, send a notification and add that data to cached items
+        # if new items have been found, add that data to cached items
         if new_data:
             # write old + new items to cache file
             with open(cache_file, "w+", encoding="utf8") as file:

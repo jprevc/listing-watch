@@ -12,6 +12,8 @@ from news_crawlers import configuration
 
 DEFAULT_CACHE_PATH = pathlib.Path("data") / ".nc_cache"
 
+CrawlData = dict[str, list[dict]]
+
 
 def get_cached_items(cached_items_path: pathlib.Path) -> list:
     """
@@ -36,7 +38,7 @@ def scrape(
     spiders_to_run: list[str],
     spiders_configuration: dict[str, configuration.SpiderConfig],
     cache_folder: pathlib.Path = DEFAULT_CACHE_PATH,
-) -> dict[str, list[dict]]:
+) -> CrawlData:
 
     # create cache folder in which *_cache.json files will be stored
     if not cache_folder.exists():
@@ -45,10 +47,8 @@ def scrape(
     return run_crawlers(spiders_configuration, spiders_to_run)
 
 
-def run_crawlers(
-    spiders_configuration: dict[str, configuration.SpiderConfig], spiders_to_run: list[str]
-) -> dict[str, list[dict]]:
-    crawled_data: dict[str, list[dict]] = {}
+def run_crawlers(spiders_configuration: dict[str, configuration.SpiderConfig], spiders_to_run: list[str]) -> CrawlData:
+    crawled_data: CrawlData = {}
     for spider_name in spiders_to_run:
         spider_configuration = spiders_configuration[spider_name]
 
@@ -58,36 +58,33 @@ def run_crawlers(
     return crawled_data
 
 
-def check_diff_and_notify(
+def check_diff(
     cache_folder: pathlib.Path,
-    crawled_data: dict[str, list[dict]],
-    spiders_configuration: dict[str, configuration.SpiderConfig],
-    spiders_to_run: list[str],
-) -> dict[str, list[dict]]:
-    diff: dict[str, list[dict]] = {}
-    for spider_name in spiders_to_run:
+    crawled_data: CrawlData,
+) -> CrawlData:
+    diff: CrawlData = {}
+    for spider_name, crawled_spider_items in crawled_data.items():
         cache_file = pathlib.Path(cache_folder) / f"{spider_name}_cached.json"
 
-        new_data = get_diff(cache_file, crawled_data[spider_name])
+        # get previously crawled cached items
+        cached_spider_data = get_cached_items(cache_file)
+
+        new_data = [item for item in crawled_spider_items if item not in cached_spider_data]
+
         diff[spider_name] = new_data
 
         # if new items have been found, send a notification and add that data to cached items
         if new_data:
-            send_notifications(spiders_configuration[spider_name].notifications, spider_name, new_data)
-
-            # append new items to cached ones and write all back to file
-            with open(cache_file, "a+", encoding="utf8") as file:
-                json.dump(new_data, file)
+            # write old + new items to cache file
+            with open(cache_file, "w+", encoding="utf8") as file:
+                json.dump(cached_spider_data + new_data, file)
 
     return diff
 
 
-def get_diff(cache_file: pathlib.Path, crawled_data: list[dict]) -> list:
-    # get previously crawled cached items
-    cached_spider_data = get_cached_items(cache_file)
-
-    # check which crawled items are new
-    return [item for item in crawled_data if item not in cached_spider_data]
+def notify(diff: dict[str, list[dict]], spiders_configuration: dict[str, configuration.SpiderConfig]):
+    for spider_name, new_data in diff.items():
+        send_notifications(spiders_configuration[spider_name].notifications, spider_name, new_data)
 
 
 def send_notifications(notificators_config: dict, spider_name: str, new_data: list):

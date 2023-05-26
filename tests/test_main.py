@@ -3,7 +3,6 @@ import os
 import pathlib
 import re
 
-import requests
 import pytest
 
 from news_crawlers.__main__ import main
@@ -74,8 +73,8 @@ def test_log_option_creates_log_file(dummy_config, tmp_path: pathlib.Path):
     assert log_path.exists()
 
 
+@pytest.mark.usefixtures("mock_request_example")
 def test_running_scrape_command_returns_expected_items(monkeypatch, tmp_path: pathlib.Path, example_dummy_config):
-    monkeypatch.setattr(requests, "get", mocks.mock_requests_get)
     monkeypatch.setattr(notificators.EmailNotificator, "send_text", mocks.send_text_mock)
 
     envs = {"EMAIL_USER": "dummy_email", "EMAIL_PASS": "dummy_pass"}

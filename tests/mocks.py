@@ -1,8 +1,8 @@
 """
 Contains various mock classes which can be used in tests.
 """
-import dataclasses
 import pathlib
+from typing import Callable
 
 
 # pylint: disable=unused-argument
@@ -47,8 +47,8 @@ class SmtpMock:
         self.simulated_messages.append(message)
 
 
-def mock_get_raw_html() -> str:
-    mock_html_path = pathlib.Path(__file__).parent / "res" / "example_test_html.html"
+def mock_get_raw_html(mock_html: str) -> str:
+    mock_html_path = pathlib.Path(__file__).parent / "res" / mock_html
 
     with open(mock_html_path, encoding="utf8") as file:
         html_content = file.read()
@@ -56,13 +56,28 @@ def mock_get_raw_html() -> str:
     return html_content
 
 
-@dataclasses.dataclass
 class MockRequestObject:
-    text = mock_get_raw_html()
+    def __init__(self, mock_html):
+        self.mock_html = mock_html
+        self.request_counter = 0
+
+    @property
+    def text(self) -> str:
+        self.request_counter += 1
+        return mock_get_raw_html(self.mock_html)
+
+    @property
+    def status_code(self) -> int:
+        return 200 if self.request_counter < 1 else 404
 
 
-def mock_requests_get(url, headers, timeout) -> MockRequestObject:
-    return MockRequestObject()
+def mock_requests_get(mock_html: str) -> Callable[[str, str, str], MockRequestObject]:
+    mock_request_obj = MockRequestObject(mock_html)
+
+    def mock_request_func(url: str, headers: str, timeout: str) -> MockRequestObject:
+        return mock_request_obj
+
+    return mock_request_func
 
 
 def send_text_mock(obj, subject, message):

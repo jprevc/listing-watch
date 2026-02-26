@@ -4,6 +4,8 @@ Contains various mock classes which can be used in tests.
 import pathlib
 from typing import Callable
 
+import requests
+
 
 # pylint: disable=unused-argument
 
@@ -69,6 +71,13 @@ class MockRequestObject:
     @property
     def status_code(self) -> int:
         return 200 if self.request_counter < 1 else 404
+
+    def raise_for_status(self) -> None:
+        """Mimic requests.Response: raise on 4xx/5xx (mock uses 404 after first call)."""
+        if self.status_code >= 400:
+            response = requests.Response()
+            response.status_code = self.status_code
+            response.raise_for_status()
 
 
 def mock_requests_get(mock_html: str) -> Callable[[str, str, str], MockRequestObject]:

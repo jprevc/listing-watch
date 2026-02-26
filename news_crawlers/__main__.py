@@ -18,7 +18,12 @@ logger = logging.getLogger("main")
 
 
 def read_configuration(config_path: pathlib.Path | None = None) -> dict:
-    # read configuration
+    """
+    Load and return the application configuration from YAML.
+
+    :param config_path: Optional path to the config file. If not given, standard locations are searched.
+    :return: Configuration as a dictionary (e.g. for NewsCrawlersConfig).
+    """
     found_config_path = configuration.find_config(config_path)
 
     with open(found_config_path, encoding="utf8") as file:
@@ -30,6 +35,13 @@ def read_configuration(config_path: pathlib.Path | None = None) -> dict:
 
 
 def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], cache_folder: pathlib.Path) -> None:
+    """
+    Run the selected spiders, compare results with cache, and send notifications for new items.
+
+    :param config_path: Optional path to the config file.
+    :param spiders_to_run: List of spider names to run, or None to run all configured spiders.
+    :param cache_folder: Directory where per-spider cache files are stored.
+    """
     logger.debug(f"Running crawlers with input parameters: {locals()}")
     scrape_configuration = configuration.NewsCrawlersConfig(**read_configuration(config_path))
 
@@ -50,7 +62,7 @@ def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], ca
             # send notifications to users (only if difference with cached data is found)
             logger.debug("Sending notifications")
             scrape.notify(diff, scrape_configuration.spiders)
-            logger.debug("Notifications sent succesfully.")
+            logger.debug("Notifications sent successfully.")
         else:
             logger.debug("No new items were found.")
 

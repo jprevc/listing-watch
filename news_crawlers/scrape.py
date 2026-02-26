@@ -49,6 +49,13 @@ def scrape(
 
 
 def run_crawlers(spiders_configuration: dict[str, configuration.SpiderConfig], spiders_to_run: list[str]) -> CrawlData:
+    """
+    Run the specified spiders with their configurations and return combined crawl results.
+
+    :param spiders_configuration: Map of spider name to its config (URLs, etc.).
+    :param spiders_to_run: List of spider names to run.
+    :return: Map of spider name to list of scraped items.
+    """
     crawled_data: CrawlData = {}
     for spider_name in spiders_to_run:
         spider_configuration = spiders_configuration[spider_name]
@@ -82,12 +89,29 @@ def check_diff(
     return diff
 
 
-def notify(diff: dict[str, list[dict]], spiders_configuration: dict[str, configuration.SpiderConfig]):
+def notify(diff: dict[str, list[dict]], spiders_configuration: dict[str, configuration.SpiderConfig]) -> None:
+    """
+    Send notifications for each spider that has new items, using that spider's configured notificators.
+
+    :param diff: Map of spider name to list of new items.
+    :param spiders_configuration: Map of spider name to its config (including notifications).
+    """
     for spider_name, new_data in diff.items():
         send_notifications(spiders_configuration[spider_name].notifications, spider_name, new_data)
 
 
-def send_notifications(notificators_config: dict, spider_name: str, new_data: list):
+def send_notifications(
+    notificators_config: dict[str, dict[str, str | bool]],
+    spider_name: str,
+    new_data: list[dict],
+) -> None:
+    """
+    Send new items to all configured notificators (e.g. email, Pushover) for a single spider.
+
+    :param notificators_config: Map of notificator type name to its config (e.g. message_body_format).
+    :param spider_name: Name of the spider (used in the notification subject/title).
+    :param new_data: List of new items to send.
+    """
     # send message with each configured notificator
     for (notificator_type_str, notificator_data) in notificators_config.items():
         notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)

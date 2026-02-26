@@ -9,8 +9,21 @@ description = "An extensible python library to create web crawlers which alert u
 readme = "README.md"
 requires-python = ">=3.7"
 keywords = [ "crawler", "news",]
-classifiers = [ "Programming Language :: Python :: 3",]
-dependencies = [ "beautifulsoup4", "pydantic", "PyYAML", "requests", "schedule", "importlib_metadata"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "beautifulsoup4>=4.9",
+    "pydantic>=1.8",
+    "PyYAML>=5.4",
+    "requests>=2.25",
+    "schedule>=1.1",
+    "importlib_metadata>=1.0",
+]
 [[project.authors]]
 name = "Jost Prevc"
 email = "jost.prevc@gmail.com"
@@ -26,9 +39,14 @@ warn_unused_ignores = true
 [project.license]
 text = "MIT"
 
+[project.urls]
+Homepage = "https://github.com/jprevc/news_crawlers"
+Repository = "https://github.com/jprevc/news_crawlers"
+Changelog = "https://github.com/jprevc/news_crawlers/blob/master/CHANGELOG.md"
+
 [project.optional-dependencies]
-dev = [ "pytest", "pylint", "pre-commit", "black[d]", "mypy", "tox", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
-test = [ "pytest",]
+dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "tox", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+test = [ "pytest", "pytest-cov",]
 
 [project.scripts]
 news_crawlers = "news_crawlers.__main__:main"

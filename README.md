@@ -1,155 +1,202 @@
 # News Crawlers
 
-Contains various spiders which crawl websites for new content. If any new
-content is found, users are alerted via email.
+**An extensible Python web crawler framework that monitors websites for new content and sends notifications via Email or Pushover.**
 
-![Tests](https://github.com/jprevc/news_crawlers/actions/workflows/tests.yml/badge.svg)
+[![Tests](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml/badge.svg)](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/news_crawlers.svg)](https://pypi.org/project/news_crawlers/)
+[![codecov](https://codecov.io/gh/jprevc/news_crawlers/graph/badge.svg)](https://codecov.io/gh/jprevc/news_crawlers)
 
-Installation
-------------------
-Install this application with
+## Overview
 
-    python -m pip install news_crawlers
+News Crawlers runs spiders that crawl configured websites (e.g. classifieds, car listings) for new items. When new content is found, it alerts you via Email (Gmail SMTP) or Pushover. You can run crawlers once or on a schedule, and extend the framework with custom spiders.
 
-After installation, News Crawlers can be run from CLI, to view help you can write:
+## Features
 
-    python -m news_crawlers -h
+- **Scheduling** — Run crawlers periodically (e.g. every 15 minutes) via a `schedule` section in config.
+- **Multiple notificators** — Email (Gmail) and Pushover; mix and match per spider with configurable message formats.
+- **Extensible spiders** — Add custom spiders in `spiders.py`; each yields items whose keys match your `message_body_format` placeholders.
+- **Dockerized** — Suitable for containerized deployment (images published on Docker Hub).
 
-Configuration
-----------------------------
-NewsCrawlers's configuration is defined with a *news_crawlers.yaml* file.
+## Architecture
 
-Configuration file path can then be provided via CLI, like this:
+```mermaid
+flowchart LR
+    subgraph Config
+        YAML[news_crawlers.yaml]
+    end
+    subgraph Runtime
+        Scheduler[Scheduler]
+        Spiders[Spiders]
+        Cache[(Cache)]
+        Notify[Notificators]
+    end
+    YAML --> Scheduler
+    Scheduler --> Spiders
+    Spiders --> Cache
+    Cache -->|new items| Notify
+    Notify --> Email[Email]
+    Notify --> Pushover[Pushover]
+```
 
-    python -m news_crawlers -c {news_crawlers.yaml path}
+Flow: configuration is read from `news_crawlers.yaml`. The scheduler (if configured) runs the spiders at the specified interval. Spiders fetch pages, parse items, and check the cache for already-seen entries. New items trigger notifications via the configured channels (Email and/or Pushover).
 
-If path is not provided, application will search the file in *config* folder (if it exists) and in the current working
-directory.
+## Installation
 
-When spider is run, it will append any new items found in *.nc_cache* folder. Location of that folder can be customized
-with a --cache option, like this
+Install from PyPI:
 
-python -m news_crawlers --cache {data path}
+```bash
+python -m pip install news_crawlers
+```
 
-If not specified, application will put cache to *data/.nc_cache*, relative to current working directory.
+Run from the CLI and view help:
 
-Within the configuration file, there should be a *spiders* segment, where spiders and their configurations are listed,
-for example:
+```bash
+python -m news_crawlers -h
+```
 
-    spiders:
-            example:
-                notifications:
-                  email:
-                    email_user: "__env_EMAIL_USER"
-                    email_password: "__env_EMAIL_PASS"
-                    recipients: ['jost.prevc@gmail.com']
-                    message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
-                  pushover:
-                    recipients: ['ukdwndomjog3swwos57umfydpsa2sk']
-                    send_separately: True
-                    message_body_format: "Query: {query}\nPrice: {price}\n"
-                urls:
-                  'pet_prijateljev': https://example.com/?ctl=search_ads&keywords=pet+prijateljev
-                  'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
+## Configuration
 
-Spider name (for example "example", above), should match the *name* attribute of a spider, defined in spiders.py.
-Each spider should have a *notifications* and *urls* segment. *notifications* defines how user(s) will be notified on
-any found changes when crawling the urls, defined in *urls* segment.
+Configuration is defined in a **`news_crawlers.yaml`** file.
 
-Note that prepending any configuration value with "\_\_env\_" will treat the subsequent string as an environment
-variable and will attempt to obtain the value from environment variables. For example "__env_EMAIL_USER" will
-be replaced with the value of "EMAIL_USER" environment variable. This can be useful to avoid storing secrets within the
-configuration file.
+### Config file path
 
-Crawling can also be set on a schedule, by adding a schedule segment to news_crawlers.yaml file:
+Pass the path via CLI:
 
-    schedule:
-        every: 15
-        units: minutes
+```bash
+python -m news_crawlers -c /path/to/news_crawlers.yaml
+```
 
-So the entire *news_crawlers.yaml* file should look like this:
+If not provided, the app looks for the file in a `config` directory (if present) and in the current working directory.
 
-    schedule:
-        every: 15
-        units: minutes
-    spiders:
-        example:
-            notifications:
-              email:
-                email_user: "__env_EMAIL_USER"
-                email_password: "__env_EMAIL_PASS"
-                recipients: ['jost.prevc@gmail.com']
-                message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
-              pushover:
-                recipients: ['ukdwndomjog3swwos57umfydpsa2sk']
-                send_separately: True
-                message_body_format: "Query: {query}\nPrice: {price}\n"
-            urls:
-              'pet_prijateljev': https://example.com/?ctl=search_ads&keywords=pet+prijateljev
-              'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
+### Cache location
 
-Notification configuration
-------------------------------
-Next, you should configure notification, which will alert you about any found news. Currently, there are two options -
-Email via Gmail SMTP server or Pushover.
+When a spider runs, it stores seen items in a `.nc_cache` directory. Override the default location with:
 
-### Email configuration
+```bash
+python -m news_crawlers --cache /path/to/data
+```
 
-Visit [google app passwords](https://myaccount.google.com/apppasswords) and generate a new app password for your account.
+If not specified, the cache is stored in `data/.nc_cache` relative to the current working directory.
 
-Username and password can then be placed directly to configuration file or referenced via environment variables
-(see instructions above).
+### Spiders and URLs
 
-### Pushover configuration
+In the config file, define a **`spiders`** section listing each spider and its settings. Example:
 
-[Pushover](https://pushover.net) is a platform which enables you to easily send and receive push notifications on your
-smart device. To get it running, you will first need to create a user account. You can sign-up on
-this [link](https://pushover.net/signup). When sign-up is complete, you will receive a unique user token, which you
-will have to copy and paste to your crawler configuration (see example configuration above). Any user that wants to
-receive push notifications needs to create its own pushover username to receive their own user tokens, which will
-be stored in crawler configuration.
+```yaml
+spiders:
+  example:
+    notifications:
+      email:
+        email_user: "__env_EMAIL_USER"
+        email_password: "__env_EMAIL_PASS"
+        recipients: ['jost.prevc@gmail.com']
+        message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
+      pushover:
+        recipients: ['ukdwndomjog3swwos57umfydpsa2sk']
+        send_separately: True
+        message_body_format: "Query: {query}\nPrice: {price}\n"
+    urls:
+      'pet_prijateljev': https://example.com/?ctl=search_ads&keywords=pet+prijateljev
+      'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
+```
 
-Next, you should register your crawler application on pushover. To do this, visit [registration site](https://pushover.net/apps/build)
-and fill out the provided form. Once your application is registered, you will receive an API token. This token can then
-be placed directly to configuration file or referenced via environment variables (see instructions above).
+- The spider key (e.g. `example`) must match the **`name`** attribute of a spider class in `news_crawlers/spiders.py`.
+- Each spider must have **`notifications`** and **`urls`**. Notifications define how you are alerted when new items are found for the given URLs.
 
-To receive notifications, every user should download the Pushover app to the smart device on which they want to
-receive push notifications. Once logged in, they will receive push notifications when any crawler finds news.
+### Environment variables
+
+Prefix any config value with **`__env_`** to read it from the environment. For example, `__env_EMAIL_USER` is replaced with the value of the `EMAIL_USER` environment variable. Use this to avoid storing secrets in the config file.
+
+### Schedule
+
+To run crawlers on a schedule, add a **`schedule`** section:
+
+```yaml
+schedule:
+  every: 15
+  units: minutes
+```
+
+### Example full config
+
+```yaml
+schedule:
+  every: 15
+  units: minutes
+spiders:
+  example:
+    notifications:
+      email:
+        email_user: "__env_EMAIL_USER"
+        email_password: "__env_EMAIL_PASS"
+        recipients: ['jost.prevc@gmail.com']
+        message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
+      pushover:
+        recipients: ['ukdwndomjog3swwos57umfydpsa2sk']
+        send_separately: True
+        message_body_format: "Query: {query}\nPrice: {price}\n"
+    urls:
+      'pet_prijateljev': https://example.com/?ctl=search_ads&keywords=pet+prijateljev
+      'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
+```
+
+## Notification configuration
+
+Two notification backends are supported: **Email** (Gmail SMTP) and **Pushover**.
+
+### Email
+
+1. Create an [App Password](https://myaccount.google.com/apppasswords) for your Gmail account.
+2. Put the username and password in the config, or reference them via `__env_` (see above).
+
+### Pushover
+
+1. Sign up at [Pushover](https://pushover.net/signup) and note your **user token**.
+2. Register your app at [Pushover Apps](https://pushover.net/apps/build) and get an **API token**.
+3. Put the user token(s) and API token in the config (or use `__env_` for secrets).
+4. Install the [Pushover app](https://pushover.net/) on your device(s) to receive notifications.
+
+Trial expires after 30 days; a one-time purchase is required to continue. See [Pushover pricing](https://pushover.net/pricing).
 
 - [Android](https://play.google.com/store/apps/details?id=net.superblock.pushover)
-- [AppStore](https://apps.apple.com/us/app/pushover-notifications/id506088175?ls=1)
+- [App Store](https://apps.apple.com/us/app/pushover-notifications/id506088175)
 
-Note: Pushover trial version expires after 30 days. After that, you will need to create a one-time purchase with a cost
-of 5$ to keep it working, see [pricing](https://pushover.net/pricing).
+## Running the crawlers
 
+Run all configured spiders:
 
-Running the crawlers
-----------------------
-Run the scraper by executing the following command on the project root:
+```bash
+python -m news_crawlers scrape
+```
 
-    python -m news_crawlers scrape
+Run a single spider:
 
-You can also run individual spiders with
+```bash
+python -m news_crawlers scrape -s example
+```
 
-    python -m news_crawlers scrape -s {spider_name}
+If new items are found, configured notifications are sent.
 
+## Adding custom spiders
 
-This will run specified spider and then send a configured notifications if any
-news are found.
+1. Open **`news_crawlers/spiders.py`**.
+2. Add a class that subclasses **`Spider`**.
+3. Implement crawling so the spider **yields** item dicts. The keys of each dict must match the placeholders used in the **`message_body_format`** strings in your config (e.g. `query`, `url`, `price`).
 
-Contribution
-==================
+## Development setup
 
-Checkout
-----------------
-Checkout this project with
+Clone the repository:
 
-    git clone https://github.com/jprevc/news_crawlers.git
+```bash
+git clone https://github.com/jprevc/news_crawlers.git
+cd news_crawlers
+```
 
-Adding new custom crawlers
-----------------------------
+Install in development mode (with dev dependencies) and run tests:
 
-New spiders need to be added to news_crawlers/spiders.py file. Spider is a class which must subclass Spider class.
-
-When crawling, crawler needs to yield all found items in a form of dictionary. Keys of each item need to correspond to
-referenced values of "message_body_format" field within the configuration file.
+```bash
+python -m pip install -e ".[dev]"
+tox
+```

@@ -6,3 +6,5 @@
 /news_crawlers.egg-info/**
 /build/**
 /dist/**
+/.coverage
+/coverage.xml

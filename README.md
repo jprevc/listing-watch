@@ -3,7 +3,7 @@
 **An extensible Python web crawler framework that monitors websites for new content and sends notifications via Email or Pushover.**
 
 [![Tests](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml/badge.svg)](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml)
-[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/news_crawlers.svg)](https://pypi.org/project/news_crawlers/)
 [![codecov](https://codecov.io/gh/jprevc/news_crawlers/graph/badge.svg)](https://codecov.io/gh/jprevc/news_crawlers)

@@ -7,14 +7,10 @@ name = "news_crawlers"
 version = "3.2.0"
 description = "An extensible python library to create web crawlers which alert users on news."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.12"
 keywords = [ "crawler", "news",]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
@@ -36,6 +32,11 @@ disallow_incomplete_defs = true
 disallow_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "importlib_metadata"
+ignore_missing_imports = true
 
 [project.license]
 text = "MIT"

@@ -6,7 +6,6 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/news_crawlers.svg)](https://pypi.org/project/news_crawlers/)
-[![codecov](https://codecov.io/gh/jprevc/news_crawlers/graph/badge.svg)](https://codecov.io/gh/jprevc/news_crawlers)
 
 ## Overview
 

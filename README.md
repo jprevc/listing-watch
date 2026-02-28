@@ -197,6 +197,6 @@ cd news_crawlers
 Install in development mode (with dev dependencies) and run tests:
 
 ```bash
-python -m pip install -e ".[dev]"
-tox
+uv sync --extra dev
+uv run pytest
 ```

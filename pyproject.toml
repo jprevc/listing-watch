@@ -45,7 +45,7 @@ Repository = "https://github.com/jprevc/news_crawlers"
 Changelog = "https://github.com/jprevc/news_crawlers/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "tox", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
 test = [ "pytest", "pytest-cov",]
 
 [project.scripts]
@@ -56,3 +56,6 @@ packages = [ "news_crawlers",]
 
 [tool.black]
 line-length = 120
+
+[tool.pytest.ini_options]
+addopts = "--cov=news_crawlers --cov-report=xml --cov-report=term"

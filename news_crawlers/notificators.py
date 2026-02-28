@@ -9,8 +9,11 @@ import smtplib
 import sys
 import os
 import inspect
+from typing import cast
 
 import requests
+
+NotificatorItem = dict[str, str]
 
 
 class Notificator(ABC):
@@ -28,7 +31,7 @@ class Notificator(ABC):
         self.configuration = handle_secrets_in_configuration(configuration)
 
     @abstractmethod
-    def send_text(self, subject: str, message: str):
+    def send_text(self, subject: str, message: str) -> None:
         """
         Sends notification.
 
@@ -37,7 +40,7 @@ class Notificator(ABC):
         """
 
     @abstractmethod
-    def _send_single_item(self, subject: str, item: dict, item_format: str):
+    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
         """
         Sends single item as a message.
 
@@ -49,10 +52,10 @@ class Notificator(ABC):
     def send_items(
         self,
         subject: str,
-        items: list[dict],
+        items: list[NotificatorItem],
         item_format: str,
         send_separately: bool = False,
-    ):
+    ) -> None:
         """
         Sends items in a form of a dictionary to recipients.
 
@@ -87,14 +90,13 @@ class EmailNotificator(Notificator):
 
     name = "email"
 
-    def __init__(self, configuration):
+    def __init__(self, configuration: dict[str, str | bool]) -> None:
         super().__init__(configuration)
-        self._email_user = self.configuration["email_user"]
-        self._email_password = self.configuration["email_password"]
-        self.recipients = self.configuration["recipients"]
+        self._email_user = cast(str, self.configuration["email_user"])
+        self._email_password = cast(str, self.configuration["email_password"])
+        recipients = cast(str, self.configuration["recipients"])
 
-        if isinstance(self.recipients, str):
-            self.recipients = self.recipients.split(",")
+        self.recipients = recipients.split(",")
 
     @staticmethod
     def _get_smtp_session() -> smtplib.SMTP:
@@ -105,10 +107,10 @@ class EmailNotificator(Notificator):
         """
         return smtplib.SMTP("smtp.gmail.com", 587)
 
-    def _send_single_item(self, subject, item, item_format):
+    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
         self.send_text(subject, item_format.format(**item))
 
-    def send_text(self, subject: str, message: str):
+    def send_text(self, subject: str, message: str) -> None:
         """
         Sends email message.
 
@@ -162,7 +164,7 @@ class PushoverNotificator(Notificator):
         """
         self._post_message(subject, message, url=None)
 
-    def _send_single_item(self, subject, item, item_format):
+    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
 
         # if item contains 'url' field, we can send it as URL in push notification and will be presented
         # in designated place
@@ -170,12 +172,9 @@ class PushoverNotificator(Notificator):
         message = item_format.format(**item)
         self._post_message(subject, message, url=url)
 
-    def _post_message(self, subject, message, url):
+    def _post_message(self, subject: str, message: str, url: str | None) -> None:
         session = self._open_session()
-        recipients = self.configuration["recipients"]
-
-        if isinstance(recipients, str):
-            recipients = recipients.split(",")
+        recipients = cast(str, self.configuration["recipients"]).split(",")
 
         for user_key in recipients:
             payload = {
@@ -193,7 +192,13 @@ class PushoverNotificator(Notificator):
                 headers={"User-Agent": "Python"},
             )
 
-    def send_items(self, subject, items, item_format, send_separately=False):
+    def send_items(
+        self,
+        subject: str,
+        items: list[NotificatorItem],
+        item_format: str,
+        send_separately: bool = False,
+    ) -> None:
         if send_separately:
             # here it is assumed, that any single item's text will not exceed 1024 character limitation
             super().send_items(subject, items, item_format, send_separately=True)
@@ -229,8 +234,14 @@ def get_notificator_by_name(name: str) -> type[Notificator]:
     :raises KeyError: If notificator could not be found.
     """
     for _, obj in inspect.getmembers(sys.modules[__name__]):
-        if inspect.isclass(obj) and issubclass(obj, Notificator) and obj.name == name:
-            return obj
+        if not inspect.isclass(obj):
+            continue
+        try:
+            if issubclass(obj, Notificator) and obj.name == name:
+                return obj
+        except TypeError:
+            # Ignore runtime typing artifacts such as parameterized builtins.
+            continue
     raise KeyError(f"Could not find notificator with name attribute set to {name}.")
 
 

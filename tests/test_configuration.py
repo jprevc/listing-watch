@@ -1,7 +1,7 @@
 import os
 import pathlib
 import shutil
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 

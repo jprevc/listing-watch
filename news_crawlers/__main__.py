@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
-from typing import Sequence
+from collections.abc import Sequence
 import logging.handlers
 import importlib_metadata
 
@@ -17,12 +17,12 @@ __version__ = importlib_metadata.version("news_crawlers")
 logger = logging.getLogger("main")
 
 
-def read_configuration(config_path: pathlib.Path | None = None) -> dict:
+def read_configuration(config_path: pathlib.Path | None = None) -> configuration.NewsCrawlersConfig:
     """
     Load and return the application configuration from YAML.
 
     :param config_path: Optional path to the config file. If not given, standard locations are searched.
-    :return: Configuration as a dictionary (e.g. for NewsCrawlersConfig).
+    :return: Parsed and validated configuration model.
     """
     found_config_path = configuration.find_config(config_path)
 
@@ -31,10 +31,17 @@ def read_configuration(config_path: pathlib.Path | None = None) -> dict:
 
     logger.debug(f"Found configuration in {found_config_path.resolve()}")
 
-    return config_dict
+    if config_dict is None:
+        config_dict = {}
+
+    return configuration.NewsCrawlersConfig(**config_dict)
 
 
-def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], cache_folder: pathlib.Path) -> None:
+def run_crawlers(
+    config_path: pathlib.Path | None,
+    spiders_to_run: list[str] | None,
+    cache_folder: pathlib.Path,
+) -> None:
     """
     Run the selected spiders, compare results with cache, and send notifications for new items.
 
@@ -43,7 +50,7 @@ def run_crawlers(config_path: pathlib.Path | None, spiders_to_run: list[str], ca
     :param cache_folder: Directory where per-spider cache files are stored.
     """
     logger.debug(f"Running crawlers with input parameters: {locals()}")
-    scrape_configuration = configuration.NewsCrawlersConfig(**read_configuration(config_path))
+    scrape_configuration = read_configuration(config_path)
 
     if spiders_to_run is None:
         spiders_to_run = list(scrape_configuration.spiders.keys())
@@ -108,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.info(f"Running application with args: {vars(args)}")
 
-    scrape_configuration = configuration.NewsCrawlersConfig(**read_configuration(args.config))
+    scrape_configuration = read_configuration(args.config)
 
     if args.scrape_command == "schedule":
         sch_config = configuration.ScheduleConfig(every=args.every, units=args.units)

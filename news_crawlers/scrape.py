@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Dict, List, cast
+from typing import cast
 
 from news_crawlers import notificators
 from news_crawlers import spiders
@@ -13,10 +13,10 @@ from news_crawlers import configuration
 
 DEFAULT_CACHE_PATH = pathlib.Path("data") / ".nc_cache"
 
-CrawlData = Dict[str, List[dict]]
+CrawlData = dict[str, list[spiders.SpiderItem]]
 
 
-def get_cached_items(cached_items_path: pathlib.Path) -> list:
+def get_cached_items(cached_items_path: pathlib.Path) -> list[spiders.SpiderItem]:
     """
     Returns cached (previously scraped) items from file.
 
@@ -28,7 +28,7 @@ def get_cached_items(cached_items_path: pathlib.Path) -> list:
     """
     if cached_items_path.exists():
         with open(cached_items_path, "r+", encoding="utf8") as cache_file:
-            cached_data = json.load(cache_file)
+            cached_data = cast(list[spiders.SpiderItem], json.load(cache_file))
     else:
         cached_data = []
 
@@ -89,7 +89,7 @@ def check_diff(
     return diff
 
 
-def notify(diff: dict[str, list[dict]], spiders_configuration: dict[str, configuration.SpiderConfig]) -> None:
+def notify(diff: CrawlData, spiders_configuration: dict[str, configuration.SpiderConfig]) -> None:
     """
     Send notifications for each spider that has new items, using that spider's configured notificators.
 
@@ -103,7 +103,7 @@ def notify(diff: dict[str, list[dict]], spiders_configuration: dict[str, configu
 def send_notifications(
     notificators_config: dict[str, dict[str, str | bool]],
     spider_name: str,
-    new_data: list[dict],
+    new_data: list[spiders.SpiderItem],
 ) -> None:
     """
     Send new items to all configured notificators (e.g. email, Pushover) for a single spider.

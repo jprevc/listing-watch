@@ -2,7 +2,7 @@
 Contains various mock classes which can be used in tests.
 """
 import pathlib
-from typing import Callable
+from collections.abc import Callable
 
 import requests
 

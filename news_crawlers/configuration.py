@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 import pathlib
-from typing import Dict, Optional, Union
 
-from typing_extensions import Literal
+from typing import Literal
 
 import pydantic
 
@@ -35,10 +34,10 @@ class ScheduleConfig(pydantic.BaseModel):
 
 
 class SpiderConfig(pydantic.BaseModel):
-    notifications: Dict[str, Dict[str, Union[str, bool]]]
-    urls: Dict[str, str]
+    notifications: dict[str, dict[str, str | bool]]
+    urls: dict[str, str]
 
 
 class NewsCrawlersConfig(pydantic.BaseModel):
-    schedule: Optional[ScheduleConfig]
-    spiders: Dict[str, SpiderConfig]
+    schedule: ScheduleConfig | None = None
+    spiders: dict[str, SpiderConfig]

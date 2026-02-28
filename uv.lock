@@ -770,6 +770,19 @@ test = [
     { name = "pytest-cov" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "black", extra = ["d"] },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pylint" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "types-beautifulsoup4" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.9" },
@@ -791,6 +804,19 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev", "test"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", extras = ["d"] },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pylint" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "types-beautifulsoup4" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+]
 
 [[package]]
 name = "nodeenv"

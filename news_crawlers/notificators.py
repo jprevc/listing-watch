@@ -24,7 +24,7 @@ class Notificator(ABC):
     def name(self) -> str:
         pass
 
-    def __init__(self, configuration: dict[str, str]):
+    def __init__(self, configuration: dict[str, str | bool]):
         self.configuration = handle_secrets_in_configuration(configuration)
 
     @abstractmethod
@@ -234,7 +234,7 @@ def get_notificator_by_name(name: str) -> type[Notificator]:
     raise KeyError(f"Could not find notificator with name attribute set to {name}.")
 
 
-def handle_secrets_in_configuration(configuration: dict[str, str]) -> dict[str, str]:
+def handle_secrets_in_configuration(configuration: dict[str, str | bool]) -> dict[str, str | bool]:
     """
     Replaces dictionary values starting with __env_ with values from environment variables.
 
@@ -246,9 +246,9 @@ def handle_secrets_in_configuration(configuration: dict[str, str]) -> dict[str, 
     :raises KeyError: If value could not be found in environment variables.
     """
 
-    out_dict = {}
+    out_dict: dict[str, str | bool] = {}
     for key, val in configuration.items():
-        if val.startswith("__env_"):
+        if isinstance(val, str) and val.startswith("__env_"):
             env_var = val.replace("__env_", "")
             try:
                 out_dict[key] = os.environ[env_var]

@@ -50,6 +50,12 @@ Changelog = "https://github.com/jprevc/news_crawlers/blob/master/CHANGELOG.md"
 dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
 test = [ "pytest", "pytest-cov",]
 
+[dependency-groups]
+dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+
+[tool.uv]
+default-groups = ["dev"]
+
 [project.scripts]
 news_crawlers = "news_crawlers.__main__:main"
 

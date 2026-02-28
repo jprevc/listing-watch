@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Dict, List
+from typing import Dict, List, cast
 
 from news_crawlers import notificators
 from news_crawlers import spiders
@@ -116,9 +116,12 @@ def send_notifications(
     for (notificator_type_str, notificator_data) in notificators_config.items():
         notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
 
+        message_body_format = cast(str, notificator_data["message_body_format"])
+        send_separately = cast(bool, notificator_data.get("send_separately", False))
+
         notificator.send_items(
             spider_name + " news",
             new_data,
-            notificator_data["message_body_format"],
-            send_separately=notificator_data.get("send_separately", False),
+            message_body_format,
+            send_separately=send_separately,
         )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import pathlib
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from typing_extensions import Literal
 
@@ -35,7 +35,7 @@ class ScheduleConfig(pydantic.BaseModel):
 
 
 class SpiderConfig(pydantic.BaseModel):
-    notifications: Dict[str, Dict[str, str]]
+    notifications: Dict[str, Dict[str, Union[str, bool]]]
     urls: Dict[str, str]
 
 

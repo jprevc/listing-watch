@@ -101,6 +101,10 @@ class FoundItem(models.Model):
     """A single item scraped by a spider, deduplicated by content hash per spider/query."""
 
     run = models.ForeignKey(CrawlRun, null=True, blank=True, on_delete=models.SET_NULL, related_name="items")
+    # Updated on every run that (re-)encounters this item, not just the run that first created
+    # it -- lets the "Found" count on a run (which includes already-seen items, unlike "New")
+    # link back to the actual items that made it up.
+    last_seen_run = models.ForeignKey(CrawlRun, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     query = models.ForeignKey(Query, null=True, blank=True, on_delete=models.SET_NULL, related_name="items")
     # Denormalized so items survive query deletion/renaming.
     query_name = models.CharField(max_length=255)

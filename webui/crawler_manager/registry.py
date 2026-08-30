@@ -21,6 +21,15 @@ def available_spider_choices() -> list[tuple[str, str]]:
     )
 
 
+def spider_item_fields() -> dict[str, list[str]]:
+    """Maps each spider's `name` to the keys its `run()` items contain, for use in the web UI."""
+    return {
+        cast(str, obj.name): list(obj.item_fields)
+        for _, obj in inspect.getmembers(spiders)
+        if inspect.isclass(obj) and issubclass(obj, spiders.Spider) and obj is not spiders.Spider
+    }
+
+
 def available_notificator_choices() -> list[tuple[str, str]]:
     return sorted(
         (cast(str, obj.name), cast(str, obj.name))

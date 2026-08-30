@@ -26,13 +26,14 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
     new_items: list[spiders.SpiderItem] = []
     for item in crawled_items:
         item_hash = _content_hash(item)
-        _, created = FoundItem.objects.get_or_create(
+        found_item, created = FoundItem.objects.get_or_create(
             spider_name=query.spider_name,
             query_name=query.name,
             content_hash=item_hash,
             defaults={
                 "query": query,
                 "run": run,
+                "last_seen_run": run,
                 "payload": item,
                 "title": item.get("title", ""),
                 "url": item.get("url", ""),
@@ -41,6 +42,9 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
         )
         if created:
             new_items.append(item)
+        else:
+            found_item.last_seen_run = run
+            found_item.save(update_fields=["last_seen_run"])
     return new_items
 
 

@@ -44,12 +44,19 @@ def test_run_query_dedups_on_second_run(query: Query, monkeypatch) -> None:
     monkeypatch.setattr(services.spiders, "get_spider_by_name", lambda name: _FakeSpider)
     monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
 
-    services.run_query(query)
+    first_run = services.run_query(query)
     second_run = services.run_query(query)
 
     assert second_run.new_items_count == 0
     assert second_run.items_found_count == 1
     assert FoundItem.objects.filter(query=query).count() == 1
+
+    # The item still belongs (by "run") to whichever run first created it, but "last_seen_run"
+    # tracks the most recent run that re-matched it -- lets the "Found" count on any run link
+    # back to the items that made it up, not just brand-new ones.
+    item = FoundItem.objects.get(query=query)
+    assert item.run_id == first_run.pk
+    assert item.last_seen_run_id == second_run.pk
 
 
 def test_run_query_marks_failed_on_exception(query: Query, monkeypatch) -> None:

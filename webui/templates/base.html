@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}News Crawlers{% endblock %}</title>
+    <title>{% block title %}Listing Watch{% endblock %}</title>
     <script src="{% static 'crawler_manager/htmx.min.js' %}"></script>
     <style>
         :root {
@@ -242,14 +242,20 @@
             color: var(--text-muted);
         }
 
-        details.payload summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
-        details.payload pre {
+        /* Payload preview row: a separate, full-width (colspan) row below the item it belongs to
+           -- see found_item_list.html -- rather than inline in one column of that item's own row,
+           so opening it can't resize a shared table column and reflow every other row. */
+        .payload-row pre {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 0.4rem;
             padding: 0.75rem;
-            overflow-x: auto;
             font-size: 0.8rem;
+            margin: 0;
+            /* A long unbroken value (e.g. a long URL in the payload) wraps instead of forcing
+               this row wider than the table. */
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
             max-width: 100%;
         }
 
@@ -259,7 +265,7 @@
 <body>
     {% block nav %}
     <nav class="topbar">
-        <a class="brand" href="{% url 'query_list' %}">News Crawlers</a>
+        <a class="brand" href="{% url 'query_list' %}">Listing Watch</a>
         {% if user.is_authenticated %}
         <div class="links">
             <a href="{% url 'query_list' %}">Queries</a>

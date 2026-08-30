@@ -47,8 +47,16 @@
             <td><span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span></td>
             <td>{{ run.started_at|default:"—" }}</td>
             <td>{{ run.finished_at|default:"—" }}</td>
-            <td>{{ run.items_found_count }}</td>
-            <td>{{ run.new_items_count }}</td>
+            <td>
+                {% if run.items_found_count %}
+                <a href="{% url 'found_item_list' %}?run={{ run.pk }}&run_kind=found">{{ run.items_found_count }}</a>
+                {% else %}{{ run.items_found_count }}{% endif %}
+            </td>
+            <td>
+                {% if run.new_items_count %}
+                <a href="{% url 'found_item_list' %}?run={{ run.pk }}&run_kind=new">{{ run.new_items_count }}</a>
+                {% else %}{{ run.new_items_count }}{% endif %}
+            </td>
         </tr>
         {% if run.status == "failed" and run.error_message %}
         <tr>

@@ -2,6 +2,13 @@
 {% block title %}Found items{% endblock %}
 {% block content %}
 <h1>Found items</h1>
+{% if run_filter %}
+<p>
+    Showing items {% if selected_run_kind == "new" %}newly found{% else %}found{% endif %} by the
+    <strong>{{ run_filter.query_name }}</strong> run on {{ run_filter.started_at }}
+    (<a href="{% url 'run_history_list' %}">back to run history</a>)
+</p>
+{% endif %}
 <form method="get" class="filters">
     <div class="field">
         <label for="spider">Spider</label>
@@ -48,11 +55,15 @@
             <td>{{ item.query_name }}</td>
             <td>{{ item.first_seen_at }}</td>
             <td>
-                <details class="payload">
-                    <summary>View details</summary>
-                    <pre>{{ item.payload|pprint }}</pre>
-                </details>
+                <button type="button" class="btn payload-toggle" aria-expanded="false">View details</button>
             </td>
+        </tr>
+        <!-- Payload preview lives in its own full-width row rather than inline in the "actions"
+             cell above: that cell is one column of a table whose columns share width across every
+             row, so a wide/tall payload inline there resizes that column -- and every other row's
+             layout with it -- the moment it's opened, which is disorienting to scroll through. -->
+        <tr class="payload-row" hidden>
+            <td colspan="6" class="wrap"><pre>{{ item.payload|pprint }}</pre></td>
         </tr>
         {% empty %}
         <tr><td colspan="6" class="empty">No items found yet.</td></tr>
@@ -61,4 +72,18 @@
 </table>
 </div>
 {% include "crawler_manager/_pagination.html" %}
+
+<script>
+(function () {
+    document.querySelectorAll(".payload-toggle").forEach(function (btn) {
+        var row = btn.closest("tr").nextElementSibling;
+        btn.addEventListener("click", function () {
+            var opening = row.hidden;
+            row.hidden = !opening;
+            btn.setAttribute("aria-expanded", String(opening));
+            btn.textContent = opening ? "Hide details" : "View details";
+        });
+    });
+})();
+</script>
 {% endblock %}

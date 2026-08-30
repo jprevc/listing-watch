@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from crawler_manager import scheduling
 from crawler_manager.forms import QueryForm, QueryNotificationConfigFormSet
 from crawler_manager.models import CrawlRun, FoundItem, Query
-from crawler_manager.registry import available_spider_choices
+from crawler_manager.registry import available_spider_choices, spider_item_fields
 
 PAGE_SIZE = 25
 
@@ -33,7 +33,11 @@ def query_create(request):
     else:
         form = QueryForm()
         formset = QueryNotificationConfigFormSet()
-    return render(request, "crawler_manager/query_form.html", {"form": form, "formset": formset})
+    return render(
+        request,
+        "crawler_manager/query_form.html",
+        {"form": form, "formset": formset, "spider_item_fields": spider_item_fields()},
+    )
 
 
 @login_required
@@ -51,7 +55,11 @@ def query_edit(request, pk):
     else:
         form = QueryForm(instance=query)
         formset = QueryNotificationConfigFormSet(instance=query)
-    return render(request, "crawler_manager/query_form.html", {"form": form, "formset": formset, "query": query})
+    return render(
+        request,
+        "crawler_manager/query_form.html",
+        {"form": form, "formset": formset, "query": query, "spider_item_fields": spider_item_fields()},
+    )
 
 
 @login_required
@@ -92,6 +100,21 @@ def found_item_list(request):
     if selected_query:
         items = items.filter(query_name=selected_query)
 
+    # Linked in from the run history panel's "Found"/"New" counts for one specific run. "New"
+    # means first created by that run (the `run` FK); "Found" means encountered by that run at
+    # all, new or already-seen (the `last_seen_run` FK, updated on every run that re-matches an
+    # existing item -- see services._persist_and_diff).
+    run_filter = None
+    selected_run = request.GET.get("run", "")
+    selected_run_kind = request.GET.get("run_kind", "") if selected_run else ""
+    if selected_run:
+        if selected_run_kind == "new":
+            items = items.filter(run_id=selected_run)
+        else:
+            selected_run_kind = "found"
+            items = items.filter(last_seen_run_id=selected_run)
+        run_filter = get_object_or_404(CrawlRun, pk=selected_run)
+
     page_obj = Paginator(items, PAGE_SIZE).get_page(request.GET.get("page"))
     query_names = FoundItem.objects.order_by("query_name").values_list("query_name", flat=True).distinct()
 
@@ -104,6 +127,8 @@ def found_item_list(request):
             "query_names": query_names,
             "selected_spider": selected_spider,
             "selected_query": selected_query,
+            "run_filter": run_filter,
+            "selected_run_kind": selected_run_kind,
         },
     )
 

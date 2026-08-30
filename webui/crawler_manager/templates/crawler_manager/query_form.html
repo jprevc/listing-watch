@@ -5,6 +5,7 @@
 <div class="card">
     <form method="post">
         {% csrf_token %}
+        {{ spider_item_fields|json_script:"spider-item-fields" }}
         {{ form.as_p }}
 
         <h2>Notifications</h2>
@@ -39,7 +40,7 @@
                 <label for="{{ nf.message_body_format.id_for_label }}">Message format</label>
                 {{ nf.message_body_format }}
                 {{ nf.message_body_format.errors }}
-                <span class="helptext">{{ nf.message_body_format.help_text }}</span>
+                <span class="helptext" data-message-format-help>{{ nf.message_body_format.help_text }}</span>
             </p>
             <p><label>{{ nf.send_separately }} Send each item separately</label></p>
 
@@ -86,6 +87,28 @@
 
 <script>
 (function () {
+    var fieldsDataEl = document.getElementById("spider-item-fields");
+    var fieldsBySpider = fieldsDataEl ? JSON.parse(fieldsDataEl.textContent) : {};
+    var spiderSelect = document.getElementById("id_spider_name");
+
+    function messageFormatHelpText() {
+        var fields = (spiderSelect && fieldsBySpider[spiderSelect.value]) || [];
+        if (!fields.length) return "str.format() template.";
+        return "str.format() template. Available keys: " + fields.map(function (f) {
+            return "{" + f + "}";
+        }).join(", ") + ".";
+    }
+
+    function syncMessageFormatHelp() {
+        var text = messageFormatHelpText();
+        document.querySelectorAll("[data-message-format-help]").forEach(function (el) {
+            el.textContent = text;
+        });
+    }
+
+    if (spiderSelect) spiderSelect.addEventListener("change", syncMessageFormatHelp);
+    syncMessageFormatHelp();
+
     document.querySelectorAll(".notif-row").forEach(function (row) {
         var select = row.querySelector("select[name$='-notificator_name']");
         if (!select) return;

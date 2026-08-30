@@ -57,7 +57,7 @@ class QueryNotificationConfigForm(forms.ModelForm):
         required=False,
         initial=DEFAULT_MESSAGE_BODY_FORMAT,
         widget=forms.Textarea(attrs={"rows": 3}),
-        help_text="str.format() template; available keys depend on the spider's item fields.",
+        help_text="str.format() template.",
     )
     send_separately = forms.BooleanField(
         required=False, help_text="Send one notification per item instead of batching them together."

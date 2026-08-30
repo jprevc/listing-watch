@@ -1,0 +1,10 @@
+{% comment %}
+Response body for query_run_now/query_run_status/query_stop_run: the badge is the main htmx
+swap target, and the action button rides along as an out-of-band swap so the Run/Stop icon in
+the Actions column stays in sync with it. Only used as a full AJAX response -- never included
+directly in a normally-rendered page, since a browser renders hx-swap-oob content in place
+instead of relocating it, which would duplicate the button. query_list.html includes the badge
+and action button templates separately for that reason.
+{% endcomment %}
+{% include "crawler_manager/_run_status_badge.html" %}
+{% include "crawler_manager/_run_action_button.html" %}

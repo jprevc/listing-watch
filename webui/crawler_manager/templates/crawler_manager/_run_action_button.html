@@ -1,0 +1,28 @@
+{% with latest_run=query.runs.first %}
+<span id="run-action-{{ query.pk }}" hx-swap-oob="true">
+    {% if just_triggered or latest_run.status == "pending" or latest_run.status == "running" %}
+    <form method="post" action="{% url 'query_stop_run' query.pk %}"
+          hx-post="{% url 'query_stop_run' query.pk %}"
+          hx-target="#run-status-{{ query.pk }}"
+          hx-swap="outerHTML">
+        {% csrf_token %}
+        <button class="btn btn-icon btn-danger" type="submit" title="Stop" aria-label="Stop"
+                {% if latest_run.cancel_requested %}disabled{% endif %}>
+            <span class="spinner htmx-indicator" aria-hidden="true"></span>
+            <svg class="icon-static" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>
+        </button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'query_run_now' query.pk %}"
+          hx-post="{% url 'query_run_now' query.pk %}"
+          hx-target="#run-status-{{ query.pk }}"
+          hx-swap="outerHTML">
+        {% csrf_token %}
+        <button class="btn btn-icon" type="submit" title="Run now" aria-label="Run now">
+            <span class="spinner htmx-indicator" aria-hidden="true"></span>
+            <svg class="icon-static" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+    </form>
+    {% endif %}
+</span>
+{% endwith %}

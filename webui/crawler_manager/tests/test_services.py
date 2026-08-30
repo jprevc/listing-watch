@@ -12,7 +12,7 @@ class _FakeSpider:
     def __init__(self, queries):
         self.queries = queries
 
-    def run(self):
+    def run(self, max_pages=None):
         return self.items
 
 

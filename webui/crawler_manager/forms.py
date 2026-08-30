@@ -39,9 +39,10 @@ NOTIFICATOR_REQUIRED_FIELDS: dict[str, list[str]] = {
 class QueryForm(forms.ModelForm):
     class Meta:
         model = Query
-        fields = ["name", "spider_name", "url", "cron_schedule", "is_active"]
+        fields = ["name", "spider_name", "url", "cron_schedule", "max_pages", "is_active"]
         widgets = {
             "cron_schedule": forms.TextInput(attrs={"placeholder": "*/15 * * * * (leave blank for manual only)"}),
+            "max_pages": forms.NumberInput(attrs={"placeholder": "unlimited", "min": 1}),
         }
 
 
@@ -75,8 +76,23 @@ class QueryNotificationConfigForm(forms.ModelForm):
 
     topic = forms.CharField(required=False, label="Topic")
     server = forms.CharField(required=False, label="Server URL", initial="https://ntfy.sh")
-    priority = forms.CharField(required=False, label="Priority")
-    tags = forms.CharField(required=False, label="Tags (comma-separated)")
+    priority = forms.CharField(
+        required=False,
+        label="Priority",
+        help_text=(
+            "How urgently ntfy delivers/displays the notification: min, low, default, high, or "
+            "urgent (or 1-5). Leave blank for default. urgent/5 bypasses silent mode on some devices."
+        ),
+    )
+    tags = forms.CharField(
+        required=False,
+        label="Tags (comma-separated)",
+        help_text=(
+            "Comma-separated labels. A tag matching a known emoji short name (e.g. warning, "
+            "rotating_light, white_check_mark) is shown as an emoji prefix; other tags are shown as "
+            "plain text tags."
+        ),
+    )
     token = forms.CharField(required=False, label="Auth token", widget=forms.PasswordInput(render_value=True))
     username = forms.CharField(required=False, label="Username")
     password = forms.CharField(required=False, label="Password", widget=forms.PasswordInput(render_value=True))

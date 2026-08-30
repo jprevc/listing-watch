@@ -50,6 +50,12 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
 
     Never raises: failures are recorded on the returned CrawlRun instead.
     """
+    # The very first successful run for a query always crawls all pages, regardless of
+    # `max_pages`, so the item history gets fully populated before later runs start only
+    # skimming the first few pages for new listings.
+    is_first_run = not query.runs.filter(status=CrawlRun.Status.SUCCESS).exists()
+    max_pages = None if is_first_run else query.max_pages
+
     run = CrawlRun.objects.create(
         query=query,
         query_name=query.name,
@@ -60,7 +66,7 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
     )
     try:
         spider_cls = spiders.get_spider_by_name(query.spider_name)
-        crawled_items = spider_cls({query.name: query.url}).run()
+        crawled_items = spider_cls({query.name: query.url}).run(max_pages=max_pages)
 
         new_items = _persist_and_diff(query, crawled_items, run)
         run.items_found_count = len(crawled_items)

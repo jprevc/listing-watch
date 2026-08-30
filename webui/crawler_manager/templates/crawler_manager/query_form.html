@@ -55,8 +55,14 @@
             <div class="notif-type-fields" data-notificator="ntfy" {% if nf.notificator_name.value != "ntfy" %}hidden{% endif %}>
                 <p><label for="{{ nf.topic.id_for_label }}">{{ nf.topic.label }}</label>{{ nf.topic }}{{ nf.topic.errors }}</p>
                 <p><label for="{{ nf.server.id_for_label }}">{{ nf.server.label }}</label>{{ nf.server }}</p>
-                <p><label for="{{ nf.priority.id_for_label }}">{{ nf.priority.label }}</label>{{ nf.priority }}</p>
-                <p><label for="{{ nf.tags.id_for_label }}">{{ nf.tags.label }}</label>{{ nf.tags }}</p>
+                <p>
+                    <label for="{{ nf.priority.id_for_label }}">{{ nf.priority.label }}</label>{{ nf.priority }}
+                    <small style="color: var(--text-muted);">{{ nf.priority.help_text }}</small>
+                </p>
+                <p>
+                    <label for="{{ nf.tags.id_for_label }}">{{ nf.tags.label }}</label>{{ nf.tags }}
+                    <small style="color: var(--text-muted);">{{ nf.tags.help_text }}</small>
+                </p>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
                     Only needed if your topic requires authentication -- use <strong>either</strong> an access token
                     <strong>or</strong> a username/password, not both. Leave all three blank for an unauthenticated

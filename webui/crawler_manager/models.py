@@ -22,6 +22,15 @@ class Query(models.Model):
         blank=True,
         help_text="Standard 5-field crontab expression (e.g. '*/15 * * * *'). Leave blank to only run manually.",
     )
+    max_pages = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Max pagination pages to crawl on runs after the first (only applies to spiders that "
+            "paginate). The first successful run for a query always crawls every page, to build "
+            "up the full result history. Leave blank for unlimited on every run."
+        ),
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

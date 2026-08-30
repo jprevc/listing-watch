@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if query %}Edit query{% else %}Add query{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if query %}Edit query: {{ query.name }}{% else %}Add query{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <h2>Notifications</h2>
+    {{ formset.management_form }}
+    {% for nf in formset %}
+        <div style="border:1px solid #eee; padding:0.75rem; margin-bottom:0.75rem;">
+            {{ nf.as_p }}
+        </div>
+    {% endfor %}
+
+    <button class="btn" type="submit">Save</button>
+    <a class="btn" href="{% url 'query_list' %}">Cancel</a>
+</form>
+{% endblock %}

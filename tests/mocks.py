@@ -22,6 +22,25 @@ class HttpsSessionMock:
         self.simulated_messages.append(data["message"])
 
 
+class NtfySessionMock:
+    """
+    HTTPS Session mock class for the ntfy notificator, whose 'post' call shape (raw bytes body,
+    headers carrying title/priority/tags/click/auth info) differs from Pushover's form-encoded dict.
+    """
+
+    def __init__(self):
+        self.simulated_messages = []
+        self.simulated_headers = []
+        self.simulated_urls = []
+        self.simulated_auth = []
+
+    def post(self, url, data=None, headers=None, auth=None):
+        self.simulated_urls.append(url)
+        self.simulated_messages.append(data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else data)
+        self.simulated_headers.append(headers or {})
+        self.simulated_auth.append(auth)
+
+
 class SmtpMock:
     """
     SMTP mock class

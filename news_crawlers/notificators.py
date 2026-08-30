@@ -223,6 +223,75 @@ class PushoverNotificator(Notificator):
             self.send_text(subject, temp_message)
 
 
+class NtfyNotificator(Notificator):
+    """
+    ntfy (https://ntfy.sh/) push notification implementation.
+
+    Works with the public ntfy.sh service or a self-hosted ntfy server. Configure the topic to
+    publish to; optionally a custom server, priority, tags, and authentication (either a bearer
+    token or username/password).
+    """
+
+    name = "ntfy"
+
+    @staticmethod
+    def _open_session() -> requests.Session:
+        """
+        Opens HTTPS session.
+
+        :return: HTTPS session handle.
+        """
+        return requests.Session()
+
+    def send_text(self, subject: str, message: str) -> None:
+        """
+        Sends an ntfy notification.
+
+        :param subject: Subject of push notification.
+        :param message: Push notification message.
+        """
+        self._post_message(subject, message, url=None)
+
+    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
+
+        # if item contains 'url' field, we can send it as a clickable action in the notification
+        url = item.get("url", None)
+        message = item_format.format(**item)
+        self._post_message(subject, message, url=url)
+
+    def _post_message(self, subject: str, message: str, url: str | None) -> None:
+        session = self._open_session()
+        server = cast(str, self.configuration.get("server", "https://ntfy.sh"))
+        topic = cast(str, self.configuration["topic"])
+
+        headers: dict[str, str] = {"Title": subject}
+
+        priority = self.configuration.get("priority")
+        if priority:
+            headers["Priority"] = str(priority)
+
+        tags = self.configuration.get("tags")
+        if tags:
+            headers["Tags"] = cast(str, tags)
+
+        if url:
+            headers["Click"] = url
+
+        auth = None
+        token = self.configuration.get("token")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        elif self.configuration.get("username") and self.configuration.get("password"):
+            auth = (cast(str, self.configuration["username"]), cast(str, self.configuration["password"]))
+
+        session.post(
+            f"{server.rstrip('/')}/{topic}",
+            data=message.encode("utf-8"),
+            headers=headers,
+            auth=auth,
+        )
+
+
 def get_notificator_by_name(name: str) -> type[Notificator]:
     """
     Finds notificator class with the 'name' attribute equal to the one specified.

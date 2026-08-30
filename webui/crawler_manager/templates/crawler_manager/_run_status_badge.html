@@ -1,0 +1,19 @@
+{% with latest_run=query.runs.first %}
+<span id="run-status-{{ query.pk }}"
+      {% if latest_run.status == "pending" or latest_run.status == "running" or not latest_run and just_triggered %}
+      hx-get="{% url 'query_run_status' query.pk %}?just_triggered=1"
+      hx-trigger="load delay:2s"
+      hx-swap="outerHTML"
+      {% endif %}>
+    {% if not latest_run %}
+        <span class="badge badge-none">{% if just_triggered %}starting…{% else %}no runs yet{% endif %}</span>
+    {% else %}
+        <span class="badge badge-{{ latest_run.status }}">{{ latest_run.get_status_display }}</span>
+        {% if latest_run.status == "success" %}
+            ({{ latest_run.new_items_count }} new / {{ latest_run.items_found_count }} found)
+        {% elif latest_run.status == "failed" %}
+            &mdash; {{ latest_run.error_message|truncatechars:80 }}
+        {% endif %}
+    {% endif %}
+</span>
+{% endwith %}

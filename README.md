@@ -9,13 +9,14 @@
 
 ## Overview
 
-News Crawlers runs spiders that crawl configured websites (e.g. classifieds, car listings) for new items. When new content is found, it alerts you via Email (Gmail SMTP) or Pushover. You can run crawlers once or on a schedule, and extend the framework with custom spiders.
+News Crawlers runs spiders that crawl configured websites (e.g. classifieds, car listings) for new items. When new content is found, it alerts you via Email (Gmail SMTP), Pushover, or ntfy. You can run crawlers once or on a schedule, and extend the framework with custom spiders. A Django-based web UI (see [Web UI](#web-ui) below) is also available for managing queries, schedules, and notifications, and for browsing found items and run history, backed by a database instead of the legacy JSON cache files.
 
 ## Features
 
-- **Scheduling** — Run crawlers periodically (e.g. every 15 minutes) via a `schedule` section in config.
-- **Multiple notificators** — Email (Gmail) and Pushover; mix and match per spider with configurable message formats.
+- **Scheduling** — Run crawlers periodically (e.g. every 15 minutes) via a `schedule` section in config, or via cron expressions per query in the web UI.
+- **Multiple notificators** — Email (Gmail), Pushover, and ntfy; mix and match per spider/query with configurable message formats.
 - **Extensible spiders** — Add custom spiders in `spiders.py`; each yields items whose keys match your `message_body_format` placeholders.
+- **Web UI** — Manage queries and schedules, trigger manual runs, and browse found items and run history in a browser.
 - **Dockerized** — Suitable for containerized deployment (images published on Docker Hub).
 
 ## Architecture
@@ -143,7 +144,7 @@ spiders:
 
 ## Notification configuration
 
-Two notification backends are supported: **Email** (Gmail SMTP) and **Pushover**.
+Three notification backends are supported: **Email** (Gmail SMTP), **Pushover**, and **ntfy**.
 
 ### Email
 
@@ -161,6 +162,19 @@ Trial expires after 30 days; a one-time purchase is required to continue. See [P
 
 - [Android](https://play.google.com/store/apps/details?id=net.superblock.pushover)
 - [App Store](https://apps.apple.com/us/app/pushover-notifications/id506088175)
+
+### ntfy
+
+1. Pick a topic name (a unique, unguessable string) on the public [ntfy.sh](https://ntfy.sh/) service, or run your own [self-hosted ntfy server](https://docs.ntfy.sh/install/).
+2. Subscribe to that topic in the [ntfy app](https://ntfy.sh/#subscribe) (Android/iOS/web) or CLI to receive notifications.
+3. Configure the notificator with `topic` (required), and optionally `server` (defaults to `https://ntfy.sh`), `priority`, `tags`, and authentication (`token`, or `username`+`password` for a protected topic/self-hosted server):
+
+```yaml
+notifications:
+  ntfy:
+    topic: "my_crawler_topic"
+    message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
+```
 
 ## Running the crawlers
 
@@ -183,6 +197,25 @@ If new items are found, configured notifications are sent.
 1. Open **`news_crawlers/spiders.py`**.
 2. Add a class that subclasses **`Spider`**.
 3. Implement crawling so the spider **yields** item dicts. The keys of each dict must match the placeholders used in the **`message_body_format`** strings in your config (e.g. `query`, `url`, `price`).
+
+## Web UI
+
+A Django-based web UI lives in `webui/`. It lets you add and configure queries (URL + spider + cron schedule + notifications) from a browser, trigger manual runs, and browse found items and run history (via Django admin). It uses a SQLite database instead of the legacy JSON cache files.
+
+```bash
+uv sync --group web --group dev
+cd webui
+python manage.py migrate
+python manage.py createsuperuser
+
+# optional: import an existing news_crawlers.yaml into the database
+python manage.py migrate_yaml_config --config ../news_crawlers.yaml
+
+python manage.py runserver        # web UI, in one terminal
+python manage.py runscheduler     # cron-driven scheduler, in another terminal
+```
+
+Visit `http://localhost:8000/` for the query list, and `http://localhost:8000/admin/` for found items and run history.
 
 ## Development setup
 

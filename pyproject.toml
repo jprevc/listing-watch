@@ -47,11 +47,12 @@ Repository = "https://github.com/jprevc/news_crawlers"
 Changelog = "https://github.com/jprevc/news_crawlers/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
-test = [ "pytest", "pytest-cov",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+test = [ "pytest", "pytest-cov", "pytest-django",]
 
 [dependency-groups]
-dev = [ "pytest", "pytest-cov", "pylint", "pre-commit", "black[d]", "mypy", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+web = [ "django>=5.0,<6", "apscheduler>=3.10,<4", "django-apscheduler>=0.7", "django-htmx>=1.17", "gunicorn>=22",]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -67,3 +68,5 @@ line-length = 120
 
 [tool.pytest.ini_options]
 addopts = "--cov=news_crawlers --cov-report=xml --cov-report=term"
+DJANGO_SETTINGS_MODULE = "webui.settings"
+pythonpath = ["webui"]

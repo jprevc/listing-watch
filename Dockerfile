@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -6,6 +6,14 @@ COPY . .
 
 VOLUME app/data app/config
 
-RUN ["python3", "-m", "pip", "install", "-e", "."]
+RUN pip install --no-cache-dir uv \
+    && uv sync --frozen --no-dev --group web
 
-ENTRYPOINT ["python3", "-m", "news_crawlers"]
+ENV PATH="/app/.venv/bin:$PATH"
+
+EXPOSE 8000
+
+# Default command runs the web UI (Django + APScheduler); the news_crawlers CLI is still
+# available in the same image by overriding the command, e.g.:
+#   docker run <image> python -m news_crawlers scrape
+ENTRYPOINT ["webui/docker-entrypoint.sh"]

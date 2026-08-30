@@ -9,7 +9,7 @@ import os
 import pytest
 
 from news_crawlers import notificators
-from tests.mocks import HttpsSessionMock, SmtpMock
+from tests.mocks import HttpsSessionMock, NtfySessionMock, SmtpMock
 
 
 def get_test_messages_combinations() -> list[tuple[str, int, int, int]]:
@@ -143,6 +143,7 @@ def _send_test_items(pushover, num_test_items, text_length, num_users, send_sepa
     [
         ("email", notificators.EmailNotificator),
         ("pushover", notificators.PushoverNotificator),
+        ("ntfy", notificators.NtfyNotificator),
     ],
 )
 def test_get_notificator_by_name(notificator_name: str, expected: notificators.Notificator) -> None:
@@ -188,3 +189,68 @@ def test_handle_secrets_in_configuration():
         {"test_key_1": "__env_TEST_1", "test_key_2": "test_val_2"}
     )
     assert parsed_config == {"test_key_1": "test_val_1", "test_key_2": "test_val_2"}
+
+
+@pytest.fixture(name="ntfy_session_mock")
+def ntfy_session_mock_fixture() -> NtfySessionMock:
+    return NtfySessionMock()
+
+
+def _make_ntfy_notificator(session_mock: NtfySessionMock, monkeypatch, **config_overrides):
+    config = {"topic": "test_topic", **config_overrides}
+    ntfy = notificators.NtfyNotificator(config)
+    monkeypatch.setattr(ntfy, "_open_session", lambda: session_mock)
+    return ntfy
+
+
+def test_ntfy_send_text(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
+    ntfy.send_text("test_subject", "test_message")
+
+    assert ntfy_session_mock.simulated_messages[0] == "test_message"
+    assert ntfy_session_mock.simulated_headers[0]["Title"] == "test_subject"
+
+
+def test_ntfy_default_server_used_in_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
+    ntfy.send_text("subject", "message")
+
+    assert ntfy_session_mock.simulated_urls[0] == "https://ntfy.sh/test_topic"
+
+
+def test_ntfy_custom_server_used_in_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch, server="https://ntfy.example.com/")
+    ntfy.send_text("subject", "message")
+
+    assert ntfy_session_mock.simulated_urls[0] == "https://ntfy.example.com/test_topic"
+
+
+def test_ntfy_priority_and_tags_set_headers(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch, priority="high", tags="warning,skull")
+    ntfy.send_text("subject", "message")
+
+    assert ntfy_session_mock.simulated_headers[0]["Priority"] == "high"
+    assert ntfy_session_mock.simulated_headers[0]["Tags"] == "warning,skull"
+
+
+def test_ntfy_token_sets_authorization_header(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch, token="secret_token")
+    ntfy.send_text("subject", "message")
+
+    assert ntfy_session_mock.simulated_headers[0]["Authorization"] == "Bearer secret_token"
+    assert ntfy_session_mock.simulated_auth[0] is None
+
+
+def test_ntfy_username_password_sets_basic_auth(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch, username="user", password="pass")
+    ntfy.send_text("subject", "message")
+
+    assert ntfy_session_mock.simulated_auth[0] == ("user", "pass")
+    assert "Authorization" not in ntfy_session_mock.simulated_headers[0]
+
+
+def test_ntfy_send_single_item_sets_click_header_from_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
+    ntfy.send_items("subject", [{"url": "https://example.com/item"}], "{url}", send_separately=True)
+
+    assert ntfy_session_mock.simulated_headers[0]["Click"] == "https://example.com/item"

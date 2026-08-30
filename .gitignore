@@ -8,3 +8,6 @@
 /dist/**
 /.coverage
 /coverage.xml
+/webui/db.sqlite3
+/webui/staticfiles/**
+/data/**

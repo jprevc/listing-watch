@@ -8,16 +8,16 @@ import importlib_metadata
 
 import yaml
 
-from news_crawlers import scrape
-from news_crawlers import scheduler
-from news_crawlers import configuration
+from listing_watch import scrape
+from listing_watch import scheduler
+from listing_watch import configuration
 
-__version__ = importlib_metadata.version("news_crawlers")
+__version__ = importlib_metadata.version("listing-watch")
 
 logger = logging.getLogger("main")
 
 
-def read_configuration(config_path: pathlib.Path | None = None) -> configuration.NewsCrawlersConfig:
+def read_configuration(config_path: pathlib.Path | None = None) -> configuration.ListingWatchConfig:
     """
     Load and return the application configuration from YAML.
 
@@ -34,7 +34,7 @@ def read_configuration(config_path: pathlib.Path | None = None) -> configuration
     if config_dict is None:
         config_dict = {}
 
-    return configuration.NewsCrawlersConfig(**config_dict)
+    return configuration.ListingWatchConfig(**config_dict)
 
 
 def run_crawlers(
@@ -88,11 +88,11 @@ def setup_logger(log_path: pathlib.Path, log_rotation_days: int) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
-        prog="News Crawlers",
-        description="Runs web crawlers which will check for updates and alert users if there are any news.",
+        prog="Listing Watch",
+        description="Runs web crawlers which check listings/classifieds for updates and alert users of new items.",
     )
 
-    parser.add_argument("-v", "--version", action="version", version=importlib_metadata.version("news_crawlers"))
+    parser.add_argument("-v", "--version", action="version", version=importlib_metadata.version("listing-watch"))
     parser.add_argument("-l", "--log", required=False, type=pathlib.Path)
     parser.add_argument("--log_rotation_days", default=7, required=False, type=int)
     subparsers = parser.add_subparsers(dest="command", required=False)

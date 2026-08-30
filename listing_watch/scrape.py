@@ -8,9 +8,9 @@ import logging
 import pathlib
 from typing import cast
 
-from news_crawlers import notificators
-from news_crawlers import spiders
-from news_crawlers import configuration
+from listing_watch import notificators
+from listing_watch import spiders
+from listing_watch import configuration
 
 logger = logging.getLogger(__name__)
 

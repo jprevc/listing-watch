@@ -3,12 +3,12 @@ requires = [ "setuptools", "setuptools-scm",]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "news_crawlers"
+name = "listing-watch"
 version = "3.2.0"
-description = "An extensible python library to create web crawlers which alert users on news."
+description = "An extensible python library to create web crawlers which watch listings/classifieds and alert users of new items."
 readme = "README.md"
 requires-python = ">=3.12"
-keywords = [ "crawler", "news",]
+keywords = [ "crawler", "listings", "classifieds", "marketplace",]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -43,9 +43,9 @@ ignore_missing_imports = true
 text = "MIT"
 
 [project.urls]
-Homepage = "https://github.com/jprevc/news_crawlers"
-Repository = "https://github.com/jprevc/news_crawlers"
-Changelog = "https://github.com/jprevc/news_crawlers/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/jprevc/listing-watch"
+Repository = "https://github.com/jprevc/listing-watch"
+Changelog = "https://github.com/jprevc/listing-watch/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
@@ -59,15 +59,15 @@ web = [ "django>=5.0,<6", "apscheduler>=3.10,<4", "django-apscheduler>=0.7", "dj
 default-groups = ["dev"]
 
 [project.scripts]
-news_crawlers = "news_crawlers.__main__:main"
+listing-watch = "listing_watch.__main__:main"
 
 [tool.setuptools]
-packages = [ "news_crawlers",]
+packages = [ "listing_watch",]
 
 [tool.black]
 line-length = 120
 
 [tool.pytest.ini_options]
-addopts = "--cov=news_crawlers --cov-report=xml --cov-report=term"
+addopts = "--cov=listing_watch --cov-report=xml --cov-report=term"
 DJANGO_SETTINGS_MODULE = "webui.settings"
 pythonpath = ["webui"]

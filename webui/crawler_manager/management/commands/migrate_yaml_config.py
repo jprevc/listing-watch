@@ -1,5 +1,5 @@
 """
-One-time import of the legacy news_crawlers.yaml config into the database.
+One-time import of the legacy listing_watch.yaml config into the database.
 """
 
 import pathlib
@@ -7,7 +7,7 @@ import pathlib
 import yaml
 from django.core.management.base import BaseCommand, CommandError
 
-from news_crawlers import configuration as nc_configuration
+from listing_watch import configuration as nc_configuration
 
 from crawler_manager.models import Query, QueryNotificationConfig
 
@@ -36,10 +36,10 @@ def _schedule_to_cron(schedule: nc_configuration.ScheduleConfig | None) -> str:
 
 
 class Command(BaseCommand):
-    help = "Imports queries and notification config from a legacy news_crawlers.yaml file into the database."
+    help = "Imports queries and notification config from a legacy listing_watch.yaml file into the database."
 
     def add_arguments(self, parser):
-        parser.add_argument("--config", type=pathlib.Path, default=None, help="Path to news_crawlers.yaml.")
+        parser.add_argument("--config", type=pathlib.Path, default=None, help="Path to listing_watch.yaml.")
         parser.add_argument("--dry-run", action="store_true", help="Print what would be imported, without writing.")
 
     def handle(self, *args, **options):
@@ -48,7 +48,7 @@ class Command(BaseCommand):
             raw_config = yaml.safe_load(file) or {}
 
         try:
-            config = nc_configuration.NewsCrawlersConfig(**raw_config)
+            config = nc_configuration.ListingWatchConfig(**raw_config)
         except Exception as exc:  # pylint: disable=broad-except
             raise CommandError(f"Could not parse {config_path}: {exc}") from exc
 

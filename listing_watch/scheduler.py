@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 
 import schedule  # type: ignore
-from news_crawlers import configuration
+from listing_watch import configuration
 
 
 def _run_pending_func() -> None:

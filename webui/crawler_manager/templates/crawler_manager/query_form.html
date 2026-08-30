@@ -39,7 +39,7 @@
                 <label for="{{ nf.message_body_format.id_for_label }}">Message format</label>
                 {{ nf.message_body_format }}
                 {{ nf.message_body_format.errors }}
-                <small style="color: var(--text-muted);">{{ nf.message_body_format.help_text }}</small>
+                <span class="helptext">{{ nf.message_body_format.help_text }}</span>
             </p>
             <p><label>{{ nf.send_separately }} Send each item separately</label></p>
 
@@ -57,11 +57,11 @@
                 <p><label for="{{ nf.server.id_for_label }}">{{ nf.server.label }}</label>{{ nf.server }}</p>
                 <p>
                     <label for="{{ nf.priority.id_for_label }}">{{ nf.priority.label }}</label>{{ nf.priority }}
-                    <small style="color: var(--text-muted);">{{ nf.priority.help_text }}</small>
+                    <span class="helptext">{{ nf.priority.help_text }}</span>
                 </p>
                 <p>
                     <label for="{{ nf.tags.id_for_label }}">{{ nf.tags.label }}</label>{{ nf.tags }}
-                    <small style="color: var(--text-muted);">{{ nf.tags.help_text }}</small>
+                    <span class="helptext">{{ nf.tags.help_text }}</span>
                 </p>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
                     Only needed if your topic requires authentication -- use <strong>either</strong> an access token

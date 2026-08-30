@@ -23,8 +23,8 @@ jobs:
         with:
           enable-caching: true
       - run: uv sync
-      - run: uv run mypy news_crawlers
-      - run: uv run pylint news_crawlers tests
+      - run: uv run mypy listing_watch
+      - run: uv run pylint listing_watch tests
 
   coverage:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
         with:
           enable-caching: true
       - run: uv sync --group web --group dev
-      - run: uv run pytest --cov=news_crawlers --cov-report=xml --cov-report=term
+      - run: uv run pytest --cov=listing_watch --cov-report=xml --cov-report=term
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

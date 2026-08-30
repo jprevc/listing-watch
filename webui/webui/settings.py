@@ -1,5 +1,5 @@
 """
-Django settings for the news_crawlers web UI.
+Django settings for the listing_watch web UI.
 
 See https://docs.djangoproject.com/en/5.2/topics/settings/ for the full list of settings.
 """

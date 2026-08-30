@@ -1,5 +1,5 @@
 """
-URL configuration for the news_crawlers web UI project.
+URL configuration for the listing_watch web UI project.
 """
 
 from django.contrib import admin

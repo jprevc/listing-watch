@@ -32,7 +32,7 @@ SAMPLE_CONFIG = {
 
 @pytest.fixture(name="config_file")
 def config_file_fixture(tmp_path: pathlib.Path) -> pathlib.Path:
-    path = tmp_path / "news_crawlers.yaml"
+    path = tmp_path / "listing_watch.yaml"
     with open(path, "w", encoding="utf8") as f:
         yaml.safe_dump(SAMPLE_CONFIG, f)
     return path

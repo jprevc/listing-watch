@@ -1,5 +1,5 @@
 """
-Orchestration adapter: runs a single Query through the existing news_crawlers spider/notificator
+Orchestration adapter: runs a single Query through the existing listing_watch spider/notificator
 code, persisting results as CrawlRun/FoundItem rows instead of the old JSON-file cache.
 """
 
@@ -11,7 +11,7 @@ import logging
 
 from django.utils import timezone
 
-from news_crawlers import scrape, spiders
+from listing_watch import scrape, spiders
 
 from crawler_manager.models import CrawlRun, FoundItem, Query
 

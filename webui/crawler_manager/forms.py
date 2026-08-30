@@ -6,7 +6,7 @@ from django.forms import inlineformset_factory
 from crawler_manager.models import Query, QueryNotificationConfig
 
 # Maps each notificator type to its type-specific form fields, as (form_field_name, config_key)
-# pairs. Hardcoded against the 3 notificator implementations in news_crawlers/notificators.py --
+# pairs. Hardcoded against the 3 notificator implementations in listing_watch/notificators.py --
 # adding a new Notificator subclass means adding an entry here too.
 NOTIFICATOR_TYPE_FIELDS: dict[str, list[tuple[str, str]]] = {
     "email": [

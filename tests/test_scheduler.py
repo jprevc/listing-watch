@@ -3,8 +3,8 @@ import time
 
 import schedule  # type: ignore
 
-from news_crawlers import scheduler
-from news_crawlers import configuration
+from listing_watch import scheduler
+from listing_watch import configuration
 
 
 def write_line_to_file(file_path):

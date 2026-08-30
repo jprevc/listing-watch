@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from news_crawlers import scrape
+from listing_watch import scrape
 
 INITIAL_CACHE_CONTENT = [{"item_1": "some_content_1"}]
 

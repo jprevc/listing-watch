@@ -23,7 +23,7 @@ RUN playwright install --with-deps chromium \
 
 EXPOSE 8000
 
-# Default command runs the web UI (Django + APScheduler); the news_crawlers CLI is still
+# Default command runs the web UI (Django + APScheduler); the listing_watch CLI is still
 # available in the same image by overriding the command, e.g.:
-#   docker run <image> python -m news_crawlers scrape
+#   docker run <image> python -m listing_watch scrape
 ENTRYPOINT ["webui/docker-entrypoint.sh"]

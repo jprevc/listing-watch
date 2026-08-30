@@ -4,8 +4,8 @@ import re
 
 import pytest
 
-from news_crawlers.__main__ import main
-from news_crawlers import notificators
+from listing_watch.__main__ import main
+from listing_watch import notificators
 from tests import mocks
 
 # pylint: disable=unused-argument
@@ -13,13 +13,13 @@ from tests import mocks
 
 @pytest.fixture(name="dummy_config")
 def dummy_config_fixture(tmp_path: pathlib.Path):
-    _create_dummy_config(tmp_path / "news_crawlers.yaml", {"spiders": {}})
+    _create_dummy_config(tmp_path / "listing_watch.yaml", {"spiders": {}})
 
 
 @pytest.fixture(name="example_dummy_config")
 def example_dummy_config_fixture(tmp_path: pathlib.Path):
     _create_dummy_config(
-        tmp_path / "news_crawlers.yaml",
+        tmp_path / "listing_watch.yaml",
         {
             "spiders": {
                 "example": {
@@ -62,12 +62,12 @@ def test_version(capsys):
 
 
 def test_log_option_creates_log_file(dummy_config, tmp_path: pathlib.Path):
-    log_path = tmp_path / "news_crawlers.log"
-    main(("scrape", "--config", str(tmp_path / "news_crawlers.yaml")))
+    log_path = tmp_path / "listing_watch.log"
+    main(("scrape", "--config", str(tmp_path / "listing_watch.yaml")))
 
     assert not log_path.exists()
 
-    main(("--log", str(log_path), "scrape", "--config", str(tmp_path / "news_crawlers.yaml")))
+    main(("--log", str(log_path), "scrape", "--config", str(tmp_path / "listing_watch.yaml")))
 
     assert log_path.exists()
 
@@ -80,7 +80,7 @@ def test_running_scrape_command_returns_expected_items(monkeypatch, tmp_path: pa
         (
             "scrape",
             "--config",
-            str(tmp_path / "news_crawlers.yaml"),
+            str(tmp_path / "listing_watch.yaml"),
             "--cache",
             str(tmp_path / ".nc_cache"),
             "-s",

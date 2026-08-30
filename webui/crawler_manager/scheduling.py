@@ -27,7 +27,7 @@ SYNC_JOB_ID = "sync-all-jobs"
 
 
 def run_query_job(query_id: int, trigger: str = CrawlRun.Trigger.SCHEDULED) -> None:
-    # Local import: avoids importing services (and its news_crawlers dependency chain) at module
+    # Local import: avoids importing services (and its listing_watch dependency chain) at module
     # load time for processes that only need the scheduler machinery, not the run logic itself.
     from crawler_manager import services  # pylint: disable=import-outside-toplevel
 

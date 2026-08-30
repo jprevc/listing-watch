@@ -1,15 +1,15 @@
-# News Crawlers
+# Listing Watch
 
-**An extensible Python web crawler framework that monitors websites for new content and sends notifications via Email or Pushover.**
+**An extensible Python web crawler framework that monitors listings/classifieds sites for new items and sends notifications via Email, Pushover, or ntfy.**
 
-[![Tests](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml/badge.svg)](https://github.com/jprevc/news_crawlers/actions/workflows/main.yml)
+[![Tests](https://github.com/jprevc/listing-watch/actions/workflows/main.yml/badge.svg)](https://github.com/jprevc/listing-watch/actions/workflows/main.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI version](https://badge.fury.io/py/news_crawlers.svg)](https://pypi.org/project/news_crawlers/)
+[![PyPI version](https://badge.fury.io/py/listing-watch.svg)](https://pypi.org/project/listing-watch/)
 
 ## Overview
 
-News Crawlers runs spiders that crawl configured websites (e.g. classifieds, car listings) for new items. When new content is found, it alerts you via Email (Gmail SMTP), Pushover, or ntfy. You can run crawlers once or on a schedule, and extend the framework with custom spiders. A Django-based web UI (see [Web UI](#web-ui) below) is also available for managing queries, schedules, and notifications, and for browsing found items and run history, backed by a database instead of the legacy JSON cache files.
+Listing Watch runs spiders that crawl configured websites (e.g. classifieds, car listings) for new items. When new content is found, it alerts you via Email (Gmail SMTP), Pushover, or ntfy. You can run crawlers once or on a schedule, and extend the framework with custom spiders. A Django-based web UI (see [Web UI](#web-ui) below) is also available for managing queries, schedules, and notifications, and for browsing found items and run history, backed by a database instead of the legacy JSON cache files.
 
 ## Features
 
@@ -24,7 +24,7 @@ News Crawlers runs spiders that crawl configured websites (e.g. classifieds, car
 ```mermaid
 flowchart LR
     subgraph Config
-        YAML[news_crawlers.yaml]
+        YAML[listing_watch.yaml]
     end
     subgraph Runtime
         Scheduler[Scheduler]
@@ -40,14 +40,14 @@ flowchart LR
     Notify --> Pushover[Pushover]
 ```
 
-Flow: configuration is read from `news_crawlers.yaml`. The scheduler (if configured) runs the spiders at the specified interval. Spiders fetch pages, parse items, and check the cache for already-seen entries. New items trigger notifications via the configured channels (Email and/or Pushover).
+Flow: configuration is read from `listing_watch.yaml`. The scheduler (if configured) runs the spiders at the specified interval. Spiders fetch pages, parse items, and check the cache for already-seen entries. New items trigger notifications via the configured channels (Email and/or Pushover).
 
 ## Installation
 
 Install from PyPI:
 
 ```bash
-python -m pip install news_crawlers
+python -m pip install listing-watch
 ```
 
 `exampleSpider` drives a real headless browser via Playwright (example.com's anti-bot protection
@@ -60,19 +60,19 @@ playwright install chromium
 Run from the CLI and view help:
 
 ```bash
-python -m news_crawlers -h
+python -m listing_watch -h
 ```
 
 ## Configuration
 
-Configuration is defined in a **`news_crawlers.yaml`** file.
+Configuration is defined in a **`listing_watch.yaml`** file.
 
 ### Config file path
 
 Pass the path via CLI:
 
 ```bash
-python -m news_crawlers -c /path/to/news_crawlers.yaml
+python -m listing_watch -c /path/to/listing_watch.yaml
 ```
 
 If not provided, the app looks for the file in a `config` directory (if present) and in the current working directory.
@@ -82,7 +82,7 @@ If not provided, the app looks for the file in a `config` directory (if present)
 When a spider runs, it stores seen items in a `.nc_cache` directory. Override the default location with:
 
 ```bash
-python -m news_crawlers --cache /path/to/data
+python -m listing_watch --cache /path/to/data
 ```
 
 If not specified, the cache is stored in `data/.nc_cache` relative to the current working directory.
@@ -109,7 +109,7 @@ spiders:
       'enid_blyton': https://example.com/?ctl=search_ads&keywords=enid%20blyton
 ```
 
-- The spider key (e.g. `example`) must match the **`name`** attribute of a spider class in `news_crawlers/spiders.py`.
+- The spider key (e.g. `example`) must match the **`name`** attribute of a spider class in `listing_watch/spiders.py`.
 - Each spider must have **`notifications`** and **`urls`**. Notifications define how you are alerted when new items are found for the given URLs. Secret values (passwords, tokens) go directly in the config -- there is no environment-variable indirection.
 
 ### Schedule
@@ -184,20 +184,20 @@ notifications:
 Run all configured spiders:
 
 ```bash
-python -m news_crawlers scrape
+python -m listing_watch scrape
 ```
 
 Run a single spider:
 
 ```bash
-python -m news_crawlers scrape -s example
+python -m listing_watch scrape -s example
 ```
 
 If new items are found, configured notifications are sent.
 
 ## Adding custom spiders
 
-1. Open **`news_crawlers/spiders.py`**.
+1. Open **`listing_watch/spiders.py`**.
 2. Add a class that subclasses **`Spider`**.
 3. Implement crawling so the spider **yields** item dicts. The keys of each dict must match the placeholders used in the **`message_body_format`** strings in your config (e.g. `query`, `url`, `price`).
 
@@ -211,8 +211,8 @@ cd webui
 python manage.py migrate
 python manage.py createsuperuser
 
-# optional: import an existing news_crawlers.yaml into the database
-python manage.py migrate_yaml_config --config ../news_crawlers.yaml
+# optional: import an existing listing_watch.yaml into the database
+python manage.py migrate_yaml_config --config ../listing_watch.yaml
 
 python manage.py runserver        # web UI, in one terminal
 python manage.py runscheduler     # cron-driven scheduler, in another terminal
@@ -225,8 +225,8 @@ Visit `http://localhost:8000/` for the query list, and `http://localhost:8000/ad
 Clone the repository:
 
 ```bash
-git clone https://github.com/jprevc/news_crawlers.git
-cd news_crawlers
+git clone https://github.com/jprevc/listing-watch.git
+cd listing-watch
 ```
 
 Install in development mode (with dev dependencies) and run tests:

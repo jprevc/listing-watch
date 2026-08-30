@@ -1,5 +1,5 @@
 """
-Introspects the news_crawlers spider/notificator registries to build Django model field choices.
+Introspects the listing_watch spider/notificator registries to build Django model field choices.
 
 Kept separate from models.py/services.py to avoid a circular import: models.py needs these
 choices for its field definitions, and services.py needs the models themselves.
@@ -10,7 +10,7 @@ from __future__ import annotations
 import inspect
 from typing import cast
 
-from news_crawlers import notificators, spiders
+from listing_watch import notificators, spiders
 
 
 def available_spider_choices() -> list[tuple[str, str]]:

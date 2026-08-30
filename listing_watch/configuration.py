@@ -7,11 +7,11 @@ from typing import Literal
 
 import pydantic
 
-DEFAULT_CONFIG_PATH = pathlib.Path("config") / "news_crawlers.yaml"
+DEFAULT_CONFIG_PATH = pathlib.Path("config") / "listing_watch.yaml"
 
 
 def find_config(config_path: pathlib.Path | None = None) -> pathlib.Path:
-    def_config_paths: list[pathlib.Path] = [DEFAULT_CONFIG_PATH, pathlib.Path("news_crawlers.yaml")]
+    def_config_paths: list[pathlib.Path] = [DEFAULT_CONFIG_PATH, pathlib.Path("listing_watch.yaml")]
 
     if config_path is not None:
         config_path = pathlib.Path(config_path)
@@ -38,6 +38,6 @@ class SpiderConfig(pydantic.BaseModel):
     urls: dict[str, str]
 
 
-class NewsCrawlersConfig(pydantic.BaseModel):
+class ListingWatchConfig(pydantic.BaseModel):
     schedule: ScheduleConfig | None = None
     spiders: dict[str, SpiderConfig]

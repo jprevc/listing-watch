@@ -3,7 +3,7 @@
 **/*_cached.json
 /venv/**
 /.venv/**
-/news_crawlers.egg-info/**
+/listing_watch.egg-info/**
 /build/**
 /dist/**
 /.coverage

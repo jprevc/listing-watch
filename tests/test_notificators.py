@@ -7,7 +7,7 @@ from itertools import product
 
 import pytest
 
-from news_crawlers import notificators
+from listing_watch import notificators
 from tests.mocks import HttpsSessionMock, NtfySessionMock, SmtpMock
 
 

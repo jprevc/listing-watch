@@ -26,16 +26,7 @@
             <td>{% include "crawler_manager/_run_status_badge.html" %}</td>
             <td>
                 <div class="btn-row btn-row-nowrap">
-                    <form method="post" action="{% url 'query_run_now' query.pk %}"
-                          hx-post="{% url 'query_run_now' query.pk %}"
-                          hx-target="#run-status-{{ query.pk }}"
-                          hx-swap="outerHTML">
-                        {% csrf_token %}
-                        <button class="btn btn-icon" type="submit" title="Run now" aria-label="Run now">
-                            <span class="spinner htmx-indicator" aria-hidden="true"></span>
-                            <svg class="icon-static" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        </button>
-                    </form>
+                    {% include "crawler_manager/_run_action_button.html" %}
                     <a class="btn btn-icon" href="{% url 'found_item_list' %}?query={{ query.name|urlencode }}" title="Found items" aria-label="Found items">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                     </a>

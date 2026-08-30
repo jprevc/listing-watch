@@ -74,6 +74,7 @@ class CrawlRun(models.Model):
         RUNNING = "running", "Running"
         SUCCESS = "success", "Success"
         FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
 
     query = models.ForeignKey(Query, null=True, blank=True, on_delete=models.SET_NULL, related_name="runs")
     # Denormalized so history survives query deletion/renaming.
@@ -82,6 +83,9 @@ class CrawlRun(models.Model):
 
     trigger = models.CharField(max_length=16, choices=Trigger.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    # Set by the "Stop" action; polled cooperatively by the spider between pagination requests
+    # (see Spider.run's `should_stop`), since a running crawl can't be force-killed safely.
+    cancel_requested = models.BooleanField(default=False)
 
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)

@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from crawler_manager import services
@@ -12,7 +14,7 @@ class _FakeSpider:
     def __init__(self, queries):
         self.queries = queries
 
-    def run(self, max_pages=None):
+    def run(self, max_pages=None, should_stop=None):
         return self.items
 
 
@@ -69,3 +71,39 @@ def test_run_query_marks_failed_on_exception(query: Query, monkeypatch) -> None:
 
     assert run.status == CrawlRun.Status.FAILED
     assert "no such spider" in run.error_message
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, monkeypatch) -> None:
+    # Simulates a "Stop" click landing while the spider is still crawling: the fake spider flips
+    # cancel_requested on the in-progress CrawlRun (mimicking the view) before returning whatever
+    # it had already collected. run_query polls that flag on a separate thread (see services.py's
+    # comment on why -- Playwright's sync API makes ORM access from the spider's own call stack
+    # unsafe), so the fake spider has to wait it out like the real exampleSpider pagination loop
+    # does, rather than asserting `should_stop()` flips true immediately.
+    # `transaction=True` is required here (not the module-level plain `django_db`): the poller
+    # thread reads through its own DB connection, which only sees committed rows -- a plain
+    # `django_db` test wraps everything in one uncommitted outer transaction the poller can't see.
+    class _CancellingSpider:
+        items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
+
+        def __init__(self, queries):
+            self.queries = queries
+
+        def run(self, max_pages=None, should_stop=None):
+            query.runs.update(cancel_requested=True)
+            for _ in range(100):
+                if should_stop():
+                    return self.items
+                time.sleep(0.05)
+            pytest.fail("should_stop() never became true")
+            return []  # pragma: no cover - unreachable, satisfies type checkers
+
+    monkeypatch.setattr(services.spiders, "get_spider_by_name", lambda name: _CancellingSpider)
+    monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
+
+    run = services.run_query(query)
+
+    assert run.status == CrawlRun.Status.CANCELLED
+    assert run.items_found_count == 1
+    assert FoundItem.objects.filter(query=query).count() == 1

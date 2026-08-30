@@ -76,7 +76,17 @@ def query_delete(request, pk):
 def query_run_now(request, pk):
     query = get_object_or_404(Query, pk=pk)
     scheduling.trigger_manual_run(query)
-    return render(request, "crawler_manager/_run_status_badge.html", {"query": query, "just_triggered": True})
+    return render(request, "crawler_manager/_run_status_response.html", {"query": query, "just_triggered": True})
+
+
+@login_required
+@require_POST
+def query_stop_run(request, pk):
+    query = get_object_or_404(Query, pk=pk)
+    # A no-op if nothing is currently running (e.g. it already finished) -- the rendered badge
+    # below just reflects whatever the real state turns out to be.
+    CrawlRun.objects.filter(query=query, status=CrawlRun.Status.RUNNING).update(cancel_requested=True)
+    return render(request, "crawler_manager/_run_status_response.html", {"query": query, "just_triggered": False})
 
 
 @login_required
@@ -85,7 +95,7 @@ def query_run_status(request, pk):
     # reflects only the real current CrawlRun state, and polling naturally stops once that
     # reaches success/failed.
     query = get_object_or_404(Query, pk=pk)
-    return render(request, "crawler_manager/_run_status_badge.html", {"query": query, "just_triggered": False})
+    return render(request, "crawler_manager/_run_status_response.html", {"query": query, "just_triggered": False})
 
 
 @login_required

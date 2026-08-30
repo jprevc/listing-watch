@@ -8,7 +8,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 
+from django.db import OperationalError, connection
 from django.utils import timezone
 
 from listing_watch import scrape, spiders
@@ -16,6 +18,9 @@ from listing_watch import scrape, spiders
 from crawler_manager.models import CrawlRun, FoundItem, Query
 
 logger = logging.getLogger(__name__)
+
+# How often the background thread below re-checks CrawlRun.cancel_requested.
+CANCEL_POLL_INTERVAL_SECONDS = 0.5
 
 
 def _content_hash(item: spiders.SpiderItem) -> str:
@@ -68,9 +73,41 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
         status=CrawlRun.Status.RUNNING,
         started_at=timezone.now(),
     )
+    # `should_stop` (passed into the spider below) must never touch the Django ORM directly:
+    # exampleSpider calls it from inside `with sync_playwright()`, whose sync API drives its event
+    # loop via greenlets on the *calling* thread -- so `asyncio.get_running_loop()` succeeds there
+    # for the whole duration of that block, and any ORM access in that call stack raises
+    # Django's SynchronousOnlyOperation ("You cannot call this from an async context"). So the
+    # actual DB polling happens on a separate plain thread, and the spider only ever reads an
+    # in-memory flag that thread sets.
+    cancel_requested = threading.Event()
+    stop_polling = threading.Event()
+
+    def _poll_cancel_requested() -> None:
+        try:
+            while not stop_polling.is_set():
+                try:
+                    if CrawlRun.objects.filter(pk=run.pk, cancel_requested=True).exists():
+                        cancel_requested.set()
+                        return
+                except OperationalError:
+                    # SQLite can transiently raise "database is locked" when this read overlaps
+                    # a writer (e.g. the view flipping cancel_requested, or run_query's own
+                    # writes) -- just retry on the next tick rather than losing the ability to
+                    # ever detect a stop request for the rest of this run.
+                    logger.warning("Cancel-request poll hit a transient DB error, retrying.", exc_info=True)
+                stop_polling.wait(timeout=CANCEL_POLL_INTERVAL_SECONDS)
+        finally:
+            connection.close()
+
+    poller = threading.Thread(target=_poll_cancel_requested, daemon=True)
+    poller.start()
+
     try:
         spider_cls = spiders.get_spider_by_name(query.spider_name)
-        crawled_items = spider_cls({query.name: query.url}).run(max_pages=max_pages)
+        crawled_items = spider_cls({query.name: query.url}).run(
+            max_pages=max_pages, should_stop=cancel_requested.is_set
+        )
 
         new_items = _persist_and_diff(query, crawled_items, run)
         run.items_found_count = len(crawled_items)
@@ -82,12 +119,15 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
             }
             scrape.send_notifications(notifications_config, query.name, new_items)
 
-        run.status = CrawlRun.Status.SUCCESS
+        # A stopped run still keeps whatever was found up to that point -- only the terminal
+        # status differs from a normal completion.
+        run.status = CrawlRun.Status.CANCELLED if cancel_requested.is_set() else CrawlRun.Status.SUCCESS
     except Exception as exc:  # pylint: disable=broad-except
         run.status = CrawlRun.Status.FAILED
         run.error_message = str(exc)
         logger.exception("Query run failed for %s", query)
     finally:
+        stop_polling.set()
         run.finished_at = timezone.now()
         run.save()
 

@@ -12,10 +12,12 @@
         <span class="badge badge-none">no runs yet</span>
     {% else %}
         <span class="badge badge-{{ latest_run.status }}">{{ latest_run.get_status_display }}</span>
-        {% if latest_run.status == "success" %}
+        {% if latest_run.status == "success" or latest_run.status == "cancelled" %}
             ({{ latest_run.new_items_count }} new / {{ latest_run.items_found_count }} found)
         {% elif latest_run.status == "failed" %}
             &mdash; {{ latest_run.error_message|truncatechars:80 }}
+        {% elif latest_run.status == "running" and latest_run.cancel_requested %}
+            &mdash; stopping…
         {% endif %}
     {% endif %}
 </span>

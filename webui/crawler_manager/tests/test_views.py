@@ -55,6 +55,34 @@ def test_query_run_now_triggers_manual_run(admin_client, monkeypatch) -> None:
     assert calls == [query.id]
 
 
+def test_query_stop_run_sets_cancel_requested_on_running_run(admin_client) -> None:
+    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    run = CrawlRun.objects.create(
+        query=query, query_name=query.name, spider_name=query.spider_name,
+        trigger=CrawlRun.Trigger.MANUAL, status=CrawlRun.Status.RUNNING,
+    )
+
+    response = admin_client.post(reverse("query_stop_run", args=[query.pk]))
+
+    assert response.status_code == 200
+    run.refresh_from_db()
+    assert run.cancel_requested is True
+
+
+def test_query_stop_run_is_a_noop_without_a_running_run(admin_client) -> None:
+    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    run = CrawlRun.objects.create(
+        query=query, query_name=query.name, spider_name=query.spider_name,
+        trigger=CrawlRun.Trigger.MANUAL, status=CrawlRun.Status.SUCCESS,
+    )
+
+    response = admin_client.post(reverse("query_stop_run", args=[query.pk]))
+
+    assert response.status_code == 200
+    run.refresh_from_db()
+    assert run.cancel_requested is False
+
+
 def test_query_delete_removes_query(admin_client) -> None:
     query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
 

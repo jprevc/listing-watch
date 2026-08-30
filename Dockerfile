@@ -11,11 +11,15 @@ RUN pip install --no-cache-dir uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# exampleSpider drives a real headless Chromium (via Playwright) instead of plain HTTP requests --
-# example.com's anti-bot protection requires actual JS execution/fingerprinting that no amount of
-# header spoofing on a plain request can satisfy. --with-deps installs Chromium's OS-level
-# shared libraries too (fonts, codecs, etc.), needed since this is a slim base image.
-RUN playwright install --with-deps chromium
+# exampleSpider drives a real Chromium (via Playwright) instead of plain HTTP requests -- example.com's
+# anti-bot protection requires actual JS execution/fingerprinting that no amount of header spoofing
+# on a plain request can satisfy. --with-deps installs Chromium's OS-level shared libraries too
+# (fonts, codecs, etc.), needed since this is a slim base image. xvfb provides the virtual display
+# Chromium renders into: it's launched headed (not headless), since even Chromium's modern
+# headless mode still leaks a few detectable differences from a real, on-screen browser.
+RUN playwright install --with-deps chromium \
+    && apt-get install -y --no-install-recommends xvfb \
+    && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8000
 

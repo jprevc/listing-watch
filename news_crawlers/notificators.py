@@ -7,7 +7,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import smtplib
 import sys
-import os
 import inspect
 from typing import cast
 
@@ -28,7 +27,7 @@ class Notificator(ABC):
         pass
 
     def __init__(self, configuration: dict[str, str | bool]):
-        self.configuration = handle_secrets_in_configuration(configuration)
+        self.configuration = configuration
 
     @abstractmethod
     def send_text(self, subject: str, message: str) -> None:
@@ -312,28 +311,3 @@ def get_notificator_by_name(name: str) -> type[Notificator]:
             # Ignore runtime typing artifacts such as parameterized builtins.
             continue
     raise KeyError(f"Could not find notificator with name attribute set to {name}.")
-
-
-def handle_secrets_in_configuration(configuration: dict[str, str | bool]) -> dict[str, str | bool]:
-    """
-    Replaces dictionary values starting with __env_ with values from environment variables.
-
-    :param configuration: Notificator configuration dictionary.
-
-    :return: Notificator configuration dictionary, where all __env_* values are replaced with values from
-             environment variables.
-
-    :raises KeyError: If value could not be found in environment variables.
-    """
-
-    out_dict: dict[str, str | bool] = {}
-    for key, val in configuration.items():
-        if isinstance(val, str) and val.startswith("__env_"):
-            env_var = val.replace("__env_", "")
-            try:
-                out_dict[key] = os.environ[env_var]
-            except KeyError as exc:
-                raise KeyError(f"Could not find {env_var} in environment variables.") from exc
-        else:
-            out_dict[key] = val
-    return out_dict

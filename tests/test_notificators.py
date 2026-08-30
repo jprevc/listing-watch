@@ -4,7 +4,6 @@ Contains tests for Notificator classes.
 from __future__ import annotations
 
 from itertools import product
-import os
 
 import pytest
 
@@ -181,14 +180,6 @@ def test_send_email_text(email_notificator: notificators.EmailNotificator, smtp_
 def test_get_notificator_by_name_raises_key_error_if_notificator_not_found():
     with pytest.raises(KeyError):
         assert notificators.get_notificator_by_name("notexistingnotificator")
-
-
-def test_handle_secrets_in_configuration():
-    os.environ["TEST_1"] = "test_val_1"
-    parsed_config = notificators.handle_secrets_in_configuration(
-        {"test_key_1": "__env_TEST_1", "test_key_2": "test_val_2"}
-    )
-    assert parsed_config == {"test_key_1": "test_val_1", "test_key_2": "test_val_2"}
 
 
 @pytest.fixture(name="ntfy_session_mock")

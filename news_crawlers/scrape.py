@@ -4,12 +4,15 @@ Main module. Runs defined crawler and send notifications to user, if any news ar
 from __future__ import annotations
 
 import json
+import logging
 import pathlib
 from typing import cast
 
 from news_crawlers import notificators
 from news_crawlers import spiders
 from news_crawlers import configuration
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_PATH = pathlib.Path("data") / ".nc_cache"
 
@@ -112,16 +115,25 @@ def send_notifications(
     :param spider_name: Name of the spider (used in the notification subject/title).
     :param new_data: List of new items to send.
     """
-    # send message with each configured notificator
+    # send message with each configured notificator; one notificator's failure (e.g. a missing
+    # env var or bad credentials) must not prevent the others from delivering their notification
+    errors: list[str] = []
     for (notificator_type_str, notificator_data) in notificators_config.items():
-        notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
+        try:
+            notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
 
-        message_body_format = cast(str, notificator_data["message_body_format"])
-        send_separately = cast(bool, notificator_data.get("send_separately", False))
+            message_body_format = cast(str, notificator_data["message_body_format"])
+            send_separately = cast(bool, notificator_data.get("send_separately", False))
 
-        notificator.send_items(
-            spider_name + " news",
-            new_data,
-            message_body_format,
-            send_separately=send_separately,
-        )
+            notificator.send_items(
+                spider_name + " news",
+                new_data,
+                message_body_format,
+                send_separately=send_separately,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.exception("Notificator '%s' failed to send notification", notificator_type_str)
+            errors.append(f"{notificator_type_str}: {exc}")
+
+    if errors:
+        raise RuntimeError("Some notificators failed: " + "; ".join(errors))

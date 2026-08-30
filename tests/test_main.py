@@ -1,5 +1,4 @@
 import json
-import os
 import pathlib
 import re
 
@@ -27,8 +26,8 @@ def example_dummy_config_fixture(tmp_path: pathlib.Path):
                     "urls": {"dummy_url": ""},
                     "notifications": {
                         "email": {
-                            "email_user": "__env_EMAIL_USER",
-                            "email_password": "__env_EMAIL_PASS",
+                            "email_user": "dummy_email",
+                            "email_password": "dummy_pass",
                             "recipients": "dummy_recipient_1,dummy_recipient_2",
                             "message_body_format": "Query: {query}\nURL: {url}\nTitle: {title}\nPrice: {price}\n",
                         }
@@ -76,9 +75,6 @@ def test_log_option_creates_log_file(dummy_config, tmp_path: pathlib.Path):
 @pytest.mark.usefixtures("mock_request_example")
 def test_running_scrape_command_returns_expected_items(monkeypatch, tmp_path: pathlib.Path, example_dummy_config):
     monkeypatch.setattr(notificators.EmailNotificator, "send_text", mocks.send_text_mock)
-
-    envs = {"EMAIL_USER": "dummy_email", "EMAIL_PASS": "dummy_pass"}
-    monkeypatch.setattr(os, "environ", envs)
 
     main(
         (

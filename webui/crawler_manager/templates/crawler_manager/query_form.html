@@ -2,19 +2,136 @@
 {% block title %}{% if query %}Edit query{% else %}Add query{% endif %}{% endblock %}
 {% block content %}
 <h1>{% if query %}Edit query: {{ query.name }}{% else %}Add query{% endif %}</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
 
-    <h2>Notifications</h2>
-    {{ formset.management_form }}
-    {% for nf in formset %}
-        <div style="border:1px solid #eee; padding:0.75rem; margin-bottom:0.75rem;">
-            {{ nf.as_p }}
+        <h2>Notifications</h2>
+        {{ formset.management_form }}
+        {% for nf in formset %}
+        <div class="card notif-row {% if nf.is_blank_extra %}notif-row-extra{% endif %}"
+             style="margin-bottom: 0.75rem;"
+             {% if nf.is_blank_extra %}hidden{% endif %}>
+            {{ nf.id }}
+            {{ nf.non_field_errors }}
+            <div class="filters">
+                <div class="field">
+                    <label for="{{ nf.notificator_name.id_for_label }}">Type</label>
+                    {{ nf.notificator_name }}
+                    {{ nf.notificator_name.errors }}
+                </div>
+                <div class="field">
+                    <label for="{{ nf.enabled.id_for_label }}">{{ nf.enabled }} Enabled</label>
+                </div>
+                {% if nf.instance.pk %}
+                <div class="field">
+                    <label for="{{ nf.DELETE.id_for_label }}">{{ nf.DELETE }} Delete</label>
+                </div>
+                {% else %}
+                <div class="field">
+                    <button type="button" class="btn notif-row-remove">Remove</button>
+                </div>
+                {% endif %}
+            </div>
+
+            <p>
+                <label for="{{ nf.message_body_format.id_for_label }}">Message format</label>
+                {{ nf.message_body_format }}
+                {{ nf.message_body_format.errors }}
+                <small style="color: var(--text-muted);">{{ nf.message_body_format.help_text }}</small>
+            </p>
+            <p><label>{{ nf.send_separately }} Send each item separately</label></p>
+
+            <div class="notif-type-fields" data-notificator="email" {% if nf.notificator_name.value != "email" %}hidden{% endif %}>
+                <p><label for="{{ nf.email_user.id_for_label }}">{{ nf.email_user.label }}</label>{{ nf.email_user }}{{ nf.email_user.errors }}</p>
+                <p><label for="{{ nf.email_password.id_for_label }}">{{ nf.email_password.label }}</label>{{ nf.email_password }}{{ nf.email_password.errors }}</p>
+                <p><label for="{{ nf.email_recipients.id_for_label }}">{{ nf.email_recipients.label }}</label>{{ nf.email_recipients }}{{ nf.email_recipients.errors }}</p>
+            </div>
+            <div class="notif-type-fields" data-notificator="pushover" {% if nf.notificator_name.value != "pushover" %}hidden{% endif %}>
+                <p><label for="{{ nf.app_token.id_for_label }}">{{ nf.app_token.label }}</label>{{ nf.app_token }}{{ nf.app_token.errors }}</p>
+                <p><label for="{{ nf.pushover_recipients.id_for_label }}">{{ nf.pushover_recipients.label }}</label>{{ nf.pushover_recipients }}{{ nf.pushover_recipients.errors }}</p>
+            </div>
+            <div class="notif-type-fields" data-notificator="ntfy" {% if nf.notificator_name.value != "ntfy" %}hidden{% endif %}>
+                <p><label for="{{ nf.topic.id_for_label }}">{{ nf.topic.label }}</label>{{ nf.topic }}{{ nf.topic.errors }}</p>
+                <p><label for="{{ nf.server.id_for_label }}">{{ nf.server.label }}</label>{{ nf.server }}</p>
+                <p><label for="{{ nf.priority.id_for_label }}">{{ nf.priority.label }}</label>{{ nf.priority }}</p>
+                <p><label for="{{ nf.tags.id_for_label }}">{{ nf.tags.label }}</label>{{ nf.tags }}</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
+                    Only needed if your topic requires authentication -- use <strong>either</strong> an access token
+                    <strong>or</strong> a username/password, not both. Leave all three blank for an unauthenticated
+                    topic on public ntfy.sh.
+                </p>
+                <p><label for="{{ nf.token.id_for_label }}">{{ nf.token.label }}</label>{{ nf.token }}</p>
+                <p><label for="{{ nf.username.id_for_label }}">{{ nf.username.label }}</label>{{ nf.username }}</p>
+                <p><label for="{{ nf.password.id_for_label }}">{{ nf.password.label }}</label>{{ nf.password }}</p>
+            </div>
         </div>
-    {% endfor %}
+        {% endfor %}
 
-    <button class="btn" type="submit">Save</button>
-    <a class="btn" href="{% url 'query_list' %}">Cancel</a>
-</form>
+        <button type="button" id="add-notification-btn" class="btn">+ Add notification</button>
+
+        <div class="btn-row" style="margin-top: 1.25rem;">
+            <button class="btn btn-primary" type="submit">Save</button>
+            <a class="btn" href="{% url 'query_list' %}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    document.querySelectorAll(".notif-row").forEach(function (row) {
+        var select = row.querySelector("select[name$='-notificator_name']");
+        if (!select) return;
+        function sync() {
+            row.querySelectorAll(".notif-type-fields").forEach(function (div) {
+                div.hidden = div.dataset.notificator !== select.value;
+            });
+        }
+        select.addEventListener("change", sync);
+        sync();
+    });
+
+    var hiddenRows = Array.prototype.slice.call(document.querySelectorAll(".notif-row-extra[hidden]"));
+    var revealed = 0;
+    var addBtn = document.getElementById("add-notification-btn");
+
+    function updateAddButton() {
+        if (addBtn) addBtn.hidden = revealed >= hiddenRows.length;
+    }
+
+    if (addBtn) {
+        addBtn.addEventListener("click", function () {
+            if (revealed >= hiddenRows.length) return;
+            hiddenRows[revealed].hidden = false;
+            revealed += 1;
+            updateAddButton();
+        });
+    }
+    updateAddButton();
+
+    document.querySelectorAll(".notif-row-remove").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var row = btn.closest(".notif-row");
+            // Reset every field back to what the server actually rendered (not to blank) --
+            // fields like message_body_format/server have non-empty defaults, so blanking them
+            // would make Django think the row was "changed" and re-validate it on submit even
+            // after it's been removed.
+            row.querySelectorAll("input, textarea").forEach(function (el) {
+                if (el.type === "checkbox" || el.type === "radio") {
+                    el.checked = el.defaultChecked;
+                } else {
+                    el.value = el.defaultValue;
+                }
+            });
+            row.querySelectorAll("select").forEach(function (el) {
+                Array.prototype.forEach.call(el.options, function (opt) {
+                    opt.selected = opt.defaultSelected;
+                });
+            });
+            row.hidden = true;
+        });
+    });
+})();
+</script>
 {% endblock %}

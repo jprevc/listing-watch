@@ -15,8 +15,8 @@ SAMPLE_CONFIG = {
             "urls": {"kia": "https://example.com/kia"},
             "notifications": {
                 "email": {
-                    "email_user": "__env_EMAIL_USER",
-                    "email_password": "__env_EMAIL_PASS",
+                    "email_user": "dummy_email",
+                    "email_password": "dummy_pass",
                     "recipients": "a@b.com",
                     "message_body_format": "{title}",
                 }

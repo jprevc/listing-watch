@@ -89,8 +89,8 @@ spiders:
   example:
     notifications:
       email:
-        email_user: "__env_EMAIL_USER"
-        email_password: "__env_EMAIL_PASS"
+        email_user: "you@gmail.com"
+        email_password: "your-app-password"
         recipients: ['jost.prevc@gmail.com']
         message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
       pushover:
@@ -103,11 +103,7 @@ spiders:
 ```
 
 - The spider key (e.g. `example`) must match the **`name`** attribute of a spider class in `news_crawlers/spiders.py`.
-- Each spider must have **`notifications`** and **`urls`**. Notifications define how you are alerted when new items are found for the given URLs.
-
-### Environment variables
-
-Prefix any config value with **`__env_`** to read it from the environment. For example, `__env_EMAIL_USER` is replaced with the value of the `EMAIL_USER` environment variable. Use this to avoid storing secrets in the config file.
+- Each spider must have **`notifications`** and **`urls`**. Notifications define how you are alerted when new items are found for the given URLs. Secret values (passwords, tokens) go directly in the config -- there is no environment-variable indirection.
 
 ### Schedule
 
@@ -129,8 +125,8 @@ spiders:
   example:
     notifications:
       email:
-        email_user: "__env_EMAIL_USER"
-        email_password: "__env_EMAIL_PASS"
+        email_user: "you@gmail.com"
+        email_password: "your-app-password"
         recipients: ['jost.prevc@gmail.com']
         message_body_format: "Query: {query}\nURL: {url}\nPrice: {price}\n"
       pushover:
@@ -149,13 +145,13 @@ Three notification backends are supported: **Email** (Gmail SMTP), **Pushover**,
 ### Email
 
 1. Create an [App Password](https://myaccount.google.com/apppasswords) for your Gmail account.
-2. Put the username and password in the config, or reference them via `__env_` (see above).
+2. Put the username and password directly in the config.
 
 ### Pushover
 
 1. Sign up at [Pushover](https://pushover.net/signup) and note your **user token**.
 2. Register your app at [Pushover Apps](https://pushover.net/apps/build) and get an **API token**.
-3. Put the user token(s) and API token in the config (or use `__env_` for secrets).
+3. Put the user token(s) and API token directly in the config.
 4. Install the [Pushover app](https://pushover.net/) on your device(s) to receive notifications.
 
 Trial expires after 30 days; a one-time purchase is required to continue. See [Pushover pricing](https://pushover.net/pricing).

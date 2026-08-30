@@ -2,6 +2,7 @@
 {% block title %}Queries{% endblock %}
 {% block content %}
 <h1>Queries</h1>
+<div class="table-wrap">
 <table>
     <thead>
         <tr>
@@ -24,21 +25,41 @@
             <td>{{ query.is_active|yesno:"yes,no" }}</td>
             <td>{% include "crawler_manager/_run_status_badge.html" %}</td>
             <td>
-                <form method="post" action="{% url 'query_run_now' query.pk %}" style="display:inline">
-                    {% csrf_token %}
-                    <button class="btn" type="submit">Run now</button>
-                </form>
-                <a class="btn" href="{% url 'query_edit' query.pk %}">Edit</a>
-                <form method="post" action="{% url 'query_delete' query.pk %}" style="display:inline"
-                      onsubmit="return confirm('Delete query {{ query.name }}?');">
-                    {% csrf_token %}
-                    <button class="btn" type="submit">Delete</button>
-                </form>
+                <div class="btn-row btn-row-nowrap">
+                    <form method="post" action="{% url 'query_run_now' query.pk %}"
+                          hx-post="{% url 'query_run_now' query.pk %}"
+                          hx-target="#run-status-{{ query.pk }}"
+                          hx-swap="outerHTML">
+                        {% csrf_token %}
+                        <button class="btn btn-icon" type="submit" title="Run now" aria-label="Run now">
+                            <span class="spinner htmx-indicator" aria-hidden="true"></span>
+                            <svg class="icon-static" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                    </form>
+                    <a class="btn btn-icon" href="{% url 'found_item_list' %}?query={{ query.name|urlencode }}" title="Found items" aria-label="Found items">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    </a>
+                    <a class="btn btn-icon" href="{% url 'run_history_list' %}?query={{ query.name|urlencode }}" title="Run history" aria-label="Run history">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </a>
+                    <a class="btn btn-icon" href="{% url 'query_edit' query.pk %}" title="Edit" aria-label="Edit">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </a>
+                    <form method="post" action="{% url 'query_delete' query.pk %}"
+                          onsubmit="return confirm('Delete query {{ query.name }}?');">
+                        {% csrf_token %}
+                        <button class="btn btn-icon btn-danger" type="submit" title="Delete" aria-label="Delete">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+                        </button>
+                    </form>
+                </div>
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7">No queries configured yet. <a href="{% url 'query_create' %}">Add one</a>.</td></tr>
+        <tr><td colspan="7" class="empty">No queries configured yet. <a href="{% url 'query_create' %}">Add one</a>.</td></tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+<a class="btn" href="{% url 'query_create' %}" style="margin-top: 1rem;">+ Add query</a>
 {% endblock %}

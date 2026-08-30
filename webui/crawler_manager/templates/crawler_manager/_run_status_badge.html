@@ -1,12 +1,15 @@
 {% with latest_run=query.runs.first %}
 <span id="run-status-{{ query.pk }}"
-      {% if latest_run.status == "pending" or latest_run.status == "running" or not latest_run and just_triggered %}
-      hx-get="{% url 'query_run_status' query.pk %}?just_triggered=1"
+      {% if just_triggered or latest_run.status == "pending" or latest_run.status == "running" %}
+      hx-get="{% url 'query_run_status' query.pk %}"
       hx-trigger="load delay:2s"
       hx-swap="outerHTML"
       {% endif %}>
-    {% if not latest_run %}
-        <span class="badge badge-none">{% if just_triggered %}starting…{% else %}no runs yet{% endif %}</span>
+    {% if just_triggered or latest_run.status == "pending" or latest_run.status == "running" %}<span class="spinner" aria-hidden="true"></span> {% endif %}
+    {% if just_triggered %}
+        <span class="badge badge-none">starting…</span>
+    {% elif not latest_run %}
+        <span class="badge badge-none">no runs yet</span>
     {% else %}
         <span class="badge badge-{{ latest_run.status }}">{{ latest_run.get_status_display }}</span>
         {% if latest_run.status == "success" %}

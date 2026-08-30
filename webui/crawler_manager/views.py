@@ -1,11 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
 from crawler_manager import scheduling
 from crawler_manager.forms import QueryForm, QueryNotificationConfigFormSet
-from crawler_manager.models import Query
+from crawler_manager.models import CrawlRun, FoundItem, Query
+from crawler_manager.registry import available_spider_choices
+
+PAGE_SIZE = 25
 
 
 @login_required
@@ -69,6 +73,64 @@ def query_run_now(request, pk):
 
 @login_required
 def query_run_status(request, pk):
+    # Polled by the badge itself (see _run_status_badge.html) -- never "just triggered", so it
+    # reflects only the real current CrawlRun state, and polling naturally stops once that
+    # reaches success/failed.
     query = get_object_or_404(Query, pk=pk)
-    just_triggered = request.GET.get("just_triggered") == "1"
-    return render(request, "crawler_manager/_run_status_badge.html", {"query": query, "just_triggered": just_triggered})
+    return render(request, "crawler_manager/_run_status_badge.html", {"query": query, "just_triggered": False})
+
+
+@login_required
+def found_item_list(request):
+    items = FoundItem.objects.all()
+
+    selected_spider = request.GET.get("spider", "")
+    if selected_spider:
+        items = items.filter(spider_name=selected_spider)
+
+    selected_query = request.GET.get("query", "")
+    if selected_query:
+        items = items.filter(query_name=selected_query)
+
+    page_obj = Paginator(items, PAGE_SIZE).get_page(request.GET.get("page"))
+    query_names = FoundItem.objects.order_by("query_name").values_list("query_name", flat=True).distinct()
+
+    return render(
+        request,
+        "crawler_manager/found_item_list.html",
+        {
+            "page_obj": page_obj,
+            "spider_choices": available_spider_choices(),
+            "query_names": query_names,
+            "selected_spider": selected_spider,
+            "selected_query": selected_query,
+        },
+    )
+
+
+@login_required
+def run_history_list(request):
+    runs = CrawlRun.objects.all()
+
+    selected_status = request.GET.get("status", "")
+    if selected_status:
+        runs = runs.filter(status=selected_status)
+
+    selected_query = request.GET.get("query", "")
+    if selected_query:
+        runs = runs.filter(query_name=selected_query)
+
+    page_obj = Paginator(runs, PAGE_SIZE).get_page(request.GET.get("page"))
+    query_names = CrawlRun.objects.order_by("query_name").values_list("query_name", flat=True).distinct()
+
+    return render(
+        request,
+        "crawler_manager/run_history_list.html",
+        {
+            "page_obj": page_obj,
+            "status_choices": CrawlRun.Status.choices,
+            "selected_status": selected_status,
+            "query_names": query_names,
+            "selected_query": selected_query,
+        },
+    )

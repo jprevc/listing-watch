@@ -3,38 +3,284 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}News Crawlers{% endblock %}</title>
     <script src="{% static 'crawler_manager/htmx.min.js' %}"></script>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-        nav { display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid #ddd; padding-bottom: 1rem; }
-        nav a { text-decoration: none; color: #2563eb; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
-        .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.75rem; font-size: 0.8rem; }
-        .badge-pending, .badge-running { background: #fef3c7; color: #92400e; }
-        .badge-success { background: #dcfce7; color: #166534; }
-        .badge-failed { background: #fee2e2; color: #991b1b; }
-        .badge-none { background: #f3f4f6; color: #6b7280; }
-        .messages { list-style: none; padding: 0; }
-        .messages li { padding: 0.5rem; margin-bottom: 0.5rem; background: #dcfce7; border-radius: 0.25rem; }
-        form p { margin: 0.75rem 0; }
-        .btn { padding: 0.35rem 0.8rem; border-radius: 0.25rem; border: 1px solid #ccc; background: #f9fafb; cursor: pointer; }
+        :root {
+            --bg: #f3f4f6;
+            --bg-elevated: #ffffff;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --accent: #2563eb;
+            --accent-contrast: #ffffff;
+            --accent-muted: #eff6ff;
+            --radius: 0.6rem;
+            --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --danger-bg: #fee2e2;
+            --danger-text: #991b1b;
+            --neutral-bg: #f3f4f6;
+            --neutral-text: #6b7280;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --bg-elevated: #1e293b;
+                --text: #e5e7eb;
+                --text-muted: #94a3b8;
+                --border: #334155;
+                --accent: #60a5fa;
+                --accent-contrast: #0f172a;
+                --accent-muted: #1e3a5f;
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+
+                --warning-bg: #452a06;
+                --warning-text: #fbbf24;
+                --success-bg: #052e18;
+                --success-text: #4ade80;
+                --danger-bg: #450a0a;
+                --danger-text: #f87171;
+                --neutral-bg: #1e293b;
+                --neutral-text: #94a3b8;
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        a { color: var(--accent); }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem 1.25rem 3rem;
+        }
+
+        nav.topbar {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            padding: 0.9rem 1.25rem;
+        }
+
+        nav.topbar .brand {
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            margin-right: auto;
+        }
+
+        nav.topbar .links {
+            display: flex;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        nav.topbar a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        nav.topbar a:hover { color: var(--accent); }
+
+        nav.topbar form { margin: 0; }
+
+        h1 { font-size: 1.5rem; margin: 0 0 1.25rem; }
+        h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+
+        .card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.25rem;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        table { border-collapse: collapse; width: 100%; min-width: 640px; }
+        th, td { text-align: left; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--bg); }
+        td.wrap { white-space: normal; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .badge-pending, .badge-running { background: var(--warning-bg); color: var(--warning-text); }
+        .badge-success { background: var(--success-bg); color: var(--success-text); }
+        .badge-failed { background: var(--danger-bg); color: var(--danger-text); }
+        .badge-none { background: var(--neutral-bg); color: var(--neutral-text); }
+
+        .spinner {
+            display: inline-block;
+            width: 0.8em;
+            height: 0.8em;
+            margin-right: 0.3em;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            vertical-align: -0.1em;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-block; }
+
+        .messages { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+        .messages li {
+            padding: 0.6rem 0.9rem;
+            margin-bottom: 0.5rem;
+            background: var(--success-bg);
+            color: var(--success-text);
+            border-radius: var(--radius);
+        }
+
+        form p { margin: 0 0 0.9rem; }
+        label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-muted); }
+        .helptext { display: block; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem; }
+        ul.errorlist {
+            list-style: none;
+            padding: 0.6rem 0.9rem;
+            margin: 0 0 0.75rem;
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border-radius: 0.4rem;
+            font-size: 0.85rem;
+        }
+        ul.errorlist li { margin: 0; }
+        ul.errorlist + input, ul.errorlist + select, ul.errorlist + textarea { border-color: var(--danger-text); }
+        input, select, textarea {
+            font: inherit;
+            color: var(--text);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.4rem;
+            padding: 0.45rem 0.6rem;
+            width: 100%;
+            max-width: 420px;
+        }
+        input[type="checkbox"] { width: auto; }
+
+        .btn {
+            display: inline-block;
+            font: inherit;
+            padding: 0.4rem 0.85rem;
+            border-radius: 0.4rem;
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+        .btn-primary:hover { opacity: 0.9; color: var(--accent-contrast); }
+        .btn-danger { color: var(--danger-text); }
+        .btn-danger:hover { border-color: var(--danger-text); }
+        .btn-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .btn-row-nowrap { flex-wrap: nowrap; }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.1rem;
+            height: 2.1rem;
+            padding: 0;
+        }
+        .btn-icon .spinner { margin-right: 0; }
+        .htmx-request .icon-static { display: none; }
+
+        .filters {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 1rem;
+        }
+        .filters label { margin-bottom: 0.2rem; }
+        .filters select { max-width: 220px; }
+        .filters .field { display: flex; flex-direction: column; }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        details.payload summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
+        details.payload pre {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0.4rem;
+            padding: 0.75rem;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            max-width: 100%;
+        }
+
+        .empty { color: var(--text-muted); padding: 1.5rem; text-align: center; }
     </style>
 </head>
 <body>
-    <nav>
-        <a href="{% url 'query_list' %}">Queries</a>
-        <a href="{% url 'query_create' %}">Add query</a>
-        <a href="/admin/crawler_manager/founditem/">Found items</a>
-        <a href="/admin/crawler_manager/crawlrun/">Run history</a>
-        <a href="/admin/">Admin</a>
+    {% block nav %}
+    <nav class="topbar">
+        <a class="brand" href="{% url 'query_list' %}">News Crawlers</a>
+        {% if user.is_authenticated %}
+        <div class="links">
+            <a href="{% url 'query_list' %}">Queries</a>
+            <a href="{% url 'found_item_list' %}">Found items</a>
+            <a href="{% url 'run_history_list' %}">Run history</a>
+            <a href="/admin/">Django admin</a>
+        </div>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="btn" type="submit">Log out</button>
+        </form>
+        {% endif %}
     </nav>
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-    </ul>
-    {% endif %}
-    {% block content %}{% endblock %}
+    {% endblock %}
+    <div class="container">
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
 </body>
 </html>

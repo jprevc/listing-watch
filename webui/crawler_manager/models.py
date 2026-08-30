@@ -42,10 +42,7 @@ class QueryNotificationConfig(models.Model):
     config = models.JSONField(
         default=dict,
         blank=True,
-        help_text=(
-            "Notificator configuration, e.g. message_body_format, send_separately, recipients. "
-            "Secret values can be referenced with '__env_VARNAME' to read them from the environment."
-        ),
+        help_text="Notificator configuration, e.g. message_body_format, send_separately, recipients.",
     )
     enabled = models.BooleanField(default=True)
 

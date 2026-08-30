@@ -11,6 +11,12 @@ RUN pip install --no-cache-dir uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+# exampleSpider drives a real headless Chromium (via Playwright) instead of plain HTTP requests --
+# example.com's anti-bot protection requires actual JS execution/fingerprinting that no amount of
+# header spoofing on a plain request can satisfy. --with-deps installs Chromium's OS-level
+# shared libraries too (fonts, codecs, etc.), needed since this is a slim base image.
+RUN playwright install --with-deps chromium
+
 EXPOSE 8000
 
 # Default command runs the web UI (Django + APScheduler); the news_crawlers CLI is still

@@ -50,6 +50,13 @@ Install from PyPI:
 python -m pip install news_crawlers
 ```
 
+`exampleSpider` drives a real headless browser via Playwright (example.com's anti-bot protection
+requires actual JS execution), so its browser binary needs a one-time separate install:
+
+```bash
+playwright install chromium
+```
+
 Run from the CLI and view help:
 
 ```bash

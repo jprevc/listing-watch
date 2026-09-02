@@ -100,37 +100,34 @@ def notify(diff: CrawlData, spiders_configuration: dict[str, configuration.Spide
     :param spiders_configuration: Map of spider name to its config (including notifications).
     """
     for spider_name, new_data in diff.items():
-        send_notifications(spiders_configuration[spider_name].notifications, spider_name, new_data)
+        send_notifications(list(spiders_configuration[spider_name].notifications.items()), spider_name, new_data)
 
 
 def send_notifications(
-    notificators_config: dict[str, dict[str, str | bool]],
+    notificator_configs: list[tuple[str, dict[str, str | bool]]],
     spider_name: str,
     new_data: list[spiders.SpiderItem],
 ) -> None:
     """
     Send new items to all configured notificators (e.g. email, Pushover) for a single spider.
 
-    :param notificators_config: Map of notificator type name to its config (e.g. message_body_format).
+    :param notificator_configs: List of (notificator type name, its config incl. message_body_format)
+                                 pairs. A list rather than a dict keyed by type since the same type
+                                 can appear more than once (e.g. two differently-configured ntfy
+                                 entries).
     :param spider_name: Name of the spider (used in the notification subject/title).
     :param new_data: List of new items to send.
     """
     # send message with each configured notificator; one notificator's failure (e.g. a missing
     # env var or bad credentials) must not prevent the others from delivering their notification
     errors: list[str] = []
-    for (notificator_type_str, notificator_data) in notificators_config.items():
+    for notificator_type_str, notificator_data in notificator_configs:
         try:
             notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
 
             message_body_format = cast(str, notificator_data["message_body_format"])
-            send_separately = cast(bool, notificator_data.get("send_separately", False))
 
-            notificator.send_items(
-                spider_name + " news",
-                new_data,
-                message_body_format,
-                send_separately=send_separately,
-            )
+            notificator.send_items(spider_name + " news", new_data, message_body_format)
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Notificator '%s' failed to send notification", notificator_type_str)
             errors.append(f"{notificator_type_str}: {exc}")

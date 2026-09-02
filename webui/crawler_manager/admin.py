@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from crawler_manager.models import CrawlRun, FoundItem, Query, QueryNotificationConfig
+from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 
 
 class QueryNotificationConfigInline(admin.TabularInline):
@@ -14,6 +14,13 @@ class QueryAdmin(admin.ModelAdmin):
     list_filter = ("user", "spider_name", "is_active")
     search_fields = ("name", "url")
     inlines = [QueryNotificationConfigInline]
+
+
+@admin.register(NotificationProfile)
+class NotificationProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "user", "notificator_name", "is_default", "updated_at")
+    list_filter = ("user", "notificator_name", "is_default")
+    search_fields = ("name",)
 
 
 @admin.register(FoundItem)

@@ -3,7 +3,7 @@ import time
 import pytest
 
 from crawler_manager import services
-from crawler_manager.models import CrawlRun, FoundItem, Query, QueryNotificationConfig
+from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 
 pytestmark = pytest.mark.django_db
 
@@ -30,7 +30,10 @@ def test_run_query_persists_items_and_creates_successful_run(query: Query, monke
     sent = []
     monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: sent.append(args))
 
-    QueryNotificationConfig.objects.create(query=query, notificator_name="email", config={"recipients": "a@b.com"})
+    profile = NotificationProfile.objects.create(
+        user=query.user, name="test profile", notificator_name="email", config={"recipients": "a@b.com"}
+    )
+    QueryNotificationConfig.objects.create(query=query, profile=profile, message_body_format="{title}")
 
     run = services.run_query(query, trigger=CrawlRun.Trigger.MANUAL)
 

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{% if profile %}Edit notification profile{% else %}Add notification profile{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if profile %}Edit notification profile: {{ profile.name }}{% else %}Add notification profile{% endif %}</h1>
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <p>
+            <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+        </p>
+        <p>
+            <label for="{{ form.notificator_name.id_for_label }}">{{ form.notificator_name.label }}</label>
+            {{ form.notificator_name }}
+            {{ form.notificator_name.errors }}
+        </p>
+        <p><label>{{ form.is_default }} Use as default for this notification type on new queries</label></p>
+
+        <div class="notif-type-fields" data-notificator="email" {% if form.notificator_name.value != "email" %}hidden{% endif %}>
+            <p><label for="{{ form.email_user.id_for_label }}">{{ form.email_user.label }}</label>{{ form.email_user }}{{ form.email_user.errors }}</p>
+            <p><label for="{{ form.email_password.id_for_label }}">{{ form.email_password.label }}</label>{{ form.email_password }}{{ form.email_password.errors }}</p>
+            <p><label for="{{ form.email_recipients.id_for_label }}">{{ form.email_recipients.label }}</label>{{ form.email_recipients }}{{ form.email_recipients.errors }}</p>
+        </div>
+        <div class="notif-type-fields" data-notificator="pushover" {% if form.notificator_name.value != "pushover" %}hidden{% endif %}>
+            <p><label for="{{ form.app_token.id_for_label }}">{{ form.app_token.label }}</label>{{ form.app_token }}{{ form.app_token.errors }}</p>
+            <p><label for="{{ form.pushover_recipients.id_for_label }}">{{ form.pushover_recipients.label }}</label>{{ form.pushover_recipients }}{{ form.pushover_recipients.errors }}</p>
+        </div>
+        <div class="notif-type-fields" data-notificator="ntfy" {% if form.notificator_name.value != "ntfy" %}hidden{% endif %}>
+            <p><label for="{{ form.topic.id_for_label }}">{{ form.topic.label }}</label>{{ form.topic }}{{ form.topic.errors }}</p>
+            <p><label for="{{ form.server.id_for_label }}">{{ form.server.label }}</label>{{ form.server }}</p>
+            <p>
+                <label for="{{ form.priority.id_for_label }}">{{ form.priority.label }}</label>{{ form.priority }}
+                <span class="helptext">{{ form.priority.help_text }}</span>
+            </p>
+            <p>
+                <label for="{{ form.tags.id_for_label }}">{{ form.tags.label }}</label>{{ form.tags }}
+                <span class="helptext">{{ form.tags.help_text }}</span>
+            </p>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
+                Only needed if your topic requires authentication -- use <strong>either</strong> an access token
+                <strong>or</strong> a username/password, not both. Leave all three blank for an unauthenticated
+                topic on public ntfy.sh.
+            </p>
+            <p><label for="{{ form.token.id_for_label }}">{{ form.token.label }}</label>{{ form.token }}</p>
+            <p><label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>{{ form.username }}</p>
+            <p><label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>{{ form.password }}</p>
+        </div>
+
+        <div class="btn-row" style="margin-top: 1.25rem;">
+            <button class="btn btn-primary" type="submit">Save</button>
+            <a class="btn" href="{% url 'profile_list' %}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var select = document.getElementById("{{ form.notificator_name.id_for_label }}");
+    if (!select) return;
+
+    function sync() {
+        document.querySelectorAll(".notif-type-fields").forEach(function (div) {
+            div.hidden = div.dataset.notificator !== select.value;
+        });
+    }
+    select.addEventListener("change", sync);
+    sync();
+})();
+</script>
+{% endblock %}

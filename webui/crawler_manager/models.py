@@ -12,6 +12,8 @@ from django.db import models
 from crawler_manager import schedule_utils
 from crawler_manager.registry import available_notificator_choices, available_spider_choices
 
+DEFAULT_MESSAGE_BODY_FORMAT = "Query: {query}\nTitle: {title}\nURL: {url}\nPrice: {price}"
+
 
 class Query(models.Model):
     """A single crawl target: a name + URL to run through a given spider, on an optional schedule."""
@@ -87,23 +89,70 @@ class Query(models.Model):
         return self.cron_schedule or "Manual only"
 
 
-class QueryNotificationConfig(models.Model):
-    """One notificator (email/pushover/ntfy/...) configured for a given query."""
+class NotificationProfile(models.Model):
+    """
+    A reusable, named notificator (email/pushover/ntfy/...) configuration owned by one user, so
+    the same credentials/topic don't need to be re-entered on every query that wants to use them.
+    """
 
-    query = models.ForeignKey(Query, related_name="notification_configs", on_delete=models.CASCADE)
+    # Nullable/SET_NULL, matching Query/CrawlRun/FoundItem above: deleting the owning User
+    # shouldn't cascade into deleting their profiles.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="notification_profiles"
+    )
+    name = models.CharField(max_length=255)
     notificator_name = models.CharField(max_length=64, choices=available_notificator_choices)
     config = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Notificator configuration, e.g. message_body_format, send_separately, recipients.",
+        default=dict, blank=True, help_text="Notificator-specific configuration, e.g. topic, token, recipients."
     )
-    enabled = models.BooleanField(default=True)
+    is_default = models.BooleanField(
+        default=False, help_text="Auto-attached (pre-selected) when this user adds a new query."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [("query", "notificator_name")]
+        unique_together = [("user", "name")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "notificator_name"],
+                condition=models.Q(is_default=True),
+                name="unique_default_profile_per_user_and_type",
+            ),
+        ]
+        ordering = ["notificator_name", "name"]
 
     def __str__(self) -> str:
-        return f"{self.query} -> {self.notificator_name}"
+        return f"{self.name} ({self.notificator_name})"
+
+    def save(self, *args, **kwargs) -> None:
+        # Setting a profile as the default for its (user, notificator_name) silently replaces
+        # whichever profile held that title before, rather than erroring -- this must run BEFORE
+        # super().save() so the old default is cleared first: the unique constraint above is
+        # checked immediately (not deferred), so saving self as the new default while the old one
+        # still holds it would violate the constraint if done in the other order.
+        if self.is_default:
+            NotificationProfile.objects.filter(
+                user=self.user, notificator_name=self.notificator_name, is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+
+class QueryNotificationConfig(models.Model):
+    """Attaches one reusable NotificationProfile to a Query, with a query-specific message format."""
+
+    query = models.ForeignKey(Query, related_name="notification_configs", on_delete=models.CASCADE)
+    # PROTECT: silently dropping a live query's notification channel because someone deleted the
+    # underlying profile elsewhere would be a surprising, easy-to-miss failure mode -- deletion is
+    # blocked (see views.profile_delete) until the profile is detached from every query using it.
+    profile = models.ForeignKey(NotificationProfile, related_name="query_attachments", on_delete=models.PROTECT)
+    message_body_format = models.TextField(default=DEFAULT_MESSAGE_BODY_FORMAT, help_text="str.format() template.")
+
+    class Meta:
+        unique_together = [("query", "profile")]
+
+    def __str__(self) -> str:
+        return f"{self.query} -> {self.profile}"
 
 
 class CrawlRun(models.Model):

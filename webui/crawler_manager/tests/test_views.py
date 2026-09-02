@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 
 from crawler_manager import scheduling
-from crawler_manager.models import CrawlRun, FoundItem, Query
+from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 
 pytestmark = pytest.mark.django_db
 
@@ -268,6 +268,186 @@ def test_found_item_list_only_shows_own_items_for_non_staff(client, django_user_
     content = response.content.decode()
     assert my_item.title in content
     assert their_item.title not in content
+
+
+def test_query_create_attaches_selected_profile(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="My ntfy", notificator_name="ntfy", config={"topic": "t"}
+    )
+
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "schedule_mode": "manual",
+        "is_active": "on",
+        "notification_configs-TOTAL_FORMS": "1",
+        "notification_configs-INITIAL_FORMS": "0",
+        "notification_configs-MIN_NUM_FORMS": "0",
+        "notification_configs-MAX_NUM_FORMS": "1000",
+        "notification_configs-0-profile": str(profile.pk),
+        "notification_configs-0-message_body_format": "{title}",
+    }
+    response = admin_client.post(reverse("query_create"), data)
+
+    assert response.status_code == 302
+    query = Query.objects.get(name="new_query")
+    assert query.notification_configs.filter(profile=profile).exists()
+
+
+def test_query_create_rejects_another_users_profile(admin_client, django_user_model) -> None:
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    other_profile = NotificationProfile.objects.create(
+        user=other, name="Theirs", notificator_name="ntfy", config={"topic": "t"}
+    )
+
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "schedule_mode": "manual",
+        "is_active": "on",
+        "notification_configs-TOTAL_FORMS": "1",
+        "notification_configs-INITIAL_FORMS": "0",
+        "notification_configs-MIN_NUM_FORMS": "0",
+        "notification_configs-MAX_NUM_FORMS": "1000",
+        "notification_configs-0-profile": str(other_profile.pk),
+        "notification_configs-0-message_body_format": "{title}",
+    }
+    response = admin_client.post(reverse("query_create"), data)
+
+    assert response.status_code == 200
+    assert not Query.objects.filter(name="new_query").exists()
+
+
+def test_query_create_get_preselects_default_profiles(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    default_profile = NotificationProfile.objects.create(
+        user=user, name="Default ntfy", notificator_name="ntfy", config={"topic": "t"}, is_default=True
+    )
+    NotificationProfile.objects.create(user=user, name="Not default", notificator_name="email", config={})
+
+    response = admin_client.get(reverse("query_create"))
+
+    formset = response.context["formset"]
+    preselected = [f.initial.get("profile") for f in formset.forms if f.initial.get("profile")]
+    assert preselected == [default_profile.pk]
+
+
+def test_profile_list_requires_login(client) -> None:
+    response = client.get(reverse("profile_list"))
+    assert response.status_code == 302
+
+
+def test_profile_list_only_shows_own_profiles(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    NotificationProfile.objects.create(user=owner, name="Mine", notificator_name="ntfy", config={"topic": "t"})
+    NotificationProfile.objects.create(user=other, name="Theirs", notificator_name="ntfy", config={"topic": "t"})
+
+    client.force_login(owner)
+    response = client.get(reverse("profile_list"))
+
+    content = response.content.decode()
+    assert "Mine" in content
+    assert "Theirs" not in content
+
+
+def test_profile_list_hides_other_users_profiles_even_for_staff(admin_client, django_user_model) -> None:
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    NotificationProfile.objects.create(user=other, name="Theirs", notificator_name="ntfy", config={"topic": "t"})
+
+    response = admin_client.get(reverse("profile_list"))
+
+    assert b"Theirs" not in response.content
+
+
+def test_profile_create_sets_owner_and_config(admin_client, django_user_model) -> None:
+    data = {"name": "My ntfy", "notificator_name": "ntfy", "topic": "my-topic"}
+    response = admin_client.post(reverse("profile_create"), data)
+
+    assert response.status_code == 302
+    profile = NotificationProfile.objects.get(name="My ntfy")
+    assert profile.user == django_user_model.objects.get(username="admin")
+    assert profile.config == {"topic": "my-topic"}
+
+
+def test_profile_create_requires_type_specific_fields(admin_client) -> None:
+    data = {"name": "My ntfy", "notificator_name": "ntfy"}  # missing required "topic"
+    response = admin_client.post(reverse("profile_create"), data)
+
+    assert response.status_code == 200
+    assert not NotificationProfile.objects.filter(name="My ntfy").exists()
+
+
+def test_profile_edit_404s_for_non_owner(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    profile = NotificationProfile.objects.create(
+        user=owner, name="Mine", notificator_name="ntfy", config={"topic": "t"}
+    )
+
+    client.force_login(other)
+    response = client.get(reverse("profile_edit", args=[profile.pk]))
+
+    assert response.status_code == 404
+
+
+def test_profile_delete_removes_unused_profile(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config={"topic": "t"})
+
+    response = admin_client.post(reverse("profile_delete", args=[profile.pk]))
+
+    assert response.status_code == 302
+    assert not NotificationProfile.objects.filter(pk=profile.pk).exists()
+
+
+def test_profile_delete_blocked_when_attached_to_a_query(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config={"topic": "t"})
+    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=user)
+    QueryNotificationConfig.objects.create(query=query, profile=profile, message_body_format="{title}")
+
+    response = admin_client.post(reverse("profile_delete", args=[profile.pk]))
+
+    assert response.status_code == 302
+    assert NotificationProfile.objects.filter(pk=profile.pk).exists()
+
+
+def test_setting_a_profile_as_default_via_edit_clears_the_previous_default(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    first = NotificationProfile.objects.create(
+        user=user, name="First", notificator_name="ntfy", config={"topic": "t"}, is_default=True
+    )
+    second = NotificationProfile.objects.create(
+        user=user, name="Second", notificator_name="ntfy", config={"topic": "t2"}
+    )
+
+    response = admin_client.post(
+        reverse("profile_edit", args=[second.pk]),
+        {"name": "Second", "notificator_name": "ntfy", "topic": "t2", "is_default": "on"},
+    )
+
+    assert response.status_code == 302
+    first.refresh_from_db()
+    assert first.is_default is False
+    second.refresh_from_db()
+    assert second.is_default is True
+
+
+def test_profile_options_json_only_lists_own_profiles(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    NotificationProfile.objects.create(user=owner, name="Mine", notificator_name="ntfy", config={"topic": "t"})
+    NotificationProfile.objects.create(user=other, name="Theirs", notificator_name="ntfy", config={"topic": "t"})
+
+    client.force_login(owner)
+    response = client.get(reverse("profile_options"))
+
+    names = [p["name"] for p in response.json()["profiles"]]
+    assert names == ["Mine"]
 
 
 def test_run_history_list_only_shows_own_runs_for_non_staff(client, django_user_model) -> None:

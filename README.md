@@ -205,6 +205,8 @@ If new items are found, configured notifications are sent.
 
 A Django-based web UI lives in `webui/`. It lets you add and configure queries (URL + spider + cron schedule + notifications) from a browser, trigger manual runs, and browse found items and run history (via Django admin). It uses a SQLite database instead of the legacy JSON cache files.
 
+Notification credentials (ntfy topic/token, Pushover app token, email login) are set up once as a reusable **notification profile** under "Notification profiles" in the web UI, then attached to any query -- no need to re-enter them for every new query. Mark a profile as default for its type to have it auto-attached (pre-selected, still removable) whenever you add a query. Profiles are private to the account that created them.
+
 ```bash
 uv sync --group web --group dev
 cd webui

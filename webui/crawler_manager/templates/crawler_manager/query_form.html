@@ -47,13 +47,10 @@
             {{ nf.id }}
             {{ nf.non_field_errors }}
             <div class="filters">
-                <div class="field">
-                    <label for="{{ nf.notificator_name.id_for_label }}">Type</label>
-                    {{ nf.notificator_name }}
-                    {{ nf.notificator_name.errors }}
-                </div>
-                <div class="field">
-                    <label for="{{ nf.enabled.id_for_label }}">{{ nf.enabled }} Enabled</label>
+                <div class="field" style="flex: 1; min-width: 220px;">
+                    <label for="{{ nf.profile.id_for_label }}">Notification profile</label>
+                    {{ nf.profile }}
+                    {{ nf.profile.errors }}
                 </div>
                 {% if nf.instance.pk %}
                 <div class="field">
@@ -72,41 +69,14 @@
                 {{ nf.message_body_format.errors }}
                 <span class="helptext" data-message-format-help>{{ nf.message_body_format.help_text }}</span>
             </p>
-            <p><label>{{ nf.send_separately }} Send each item separately</label></p>
-
-            <div class="notif-type-fields" data-notificator="email" {% if nf.notificator_name.value != "email" %}hidden{% endif %}>
-                <p><label for="{{ nf.email_user.id_for_label }}">{{ nf.email_user.label }}</label>{{ nf.email_user }}{{ nf.email_user.errors }}</p>
-                <p><label for="{{ nf.email_password.id_for_label }}">{{ nf.email_password.label }}</label>{{ nf.email_password }}{{ nf.email_password.errors }}</p>
-                <p><label for="{{ nf.email_recipients.id_for_label }}">{{ nf.email_recipients.label }}</label>{{ nf.email_recipients }}{{ nf.email_recipients.errors }}</p>
-            </div>
-            <div class="notif-type-fields" data-notificator="pushover" {% if nf.notificator_name.value != "pushover" %}hidden{% endif %}>
-                <p><label for="{{ nf.app_token.id_for_label }}">{{ nf.app_token.label }}</label>{{ nf.app_token }}{{ nf.app_token.errors }}</p>
-                <p><label for="{{ nf.pushover_recipients.id_for_label }}">{{ nf.pushover_recipients.label }}</label>{{ nf.pushover_recipients }}{{ nf.pushover_recipients.errors }}</p>
-            </div>
-            <div class="notif-type-fields" data-notificator="ntfy" {% if nf.notificator_name.value != "ntfy" %}hidden{% endif %}>
-                <p><label for="{{ nf.topic.id_for_label }}">{{ nf.topic.label }}</label>{{ nf.topic }}{{ nf.topic.errors }}</p>
-                <p><label for="{{ nf.server.id_for_label }}">{{ nf.server.label }}</label>{{ nf.server }}</p>
-                <p>
-                    <label for="{{ nf.priority.id_for_label }}">{{ nf.priority.label }}</label>{{ nf.priority }}
-                    <span class="helptext">{{ nf.priority.help_text }}</span>
-                </p>
-                <p>
-                    <label for="{{ nf.tags.id_for_label }}">{{ nf.tags.label }}</label>{{ nf.tags }}
-                    <span class="helptext">{{ nf.tags.help_text }}</span>
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.4rem;">
-                    Only needed if your topic requires authentication -- use <strong>either</strong> an access token
-                    <strong>or</strong> a username/password, not both. Leave all three blank for an unauthenticated
-                    topic on public ntfy.sh.
-                </p>
-                <p><label for="{{ nf.token.id_for_label }}">{{ nf.token.label }}</label>{{ nf.token }}</p>
-                <p><label for="{{ nf.username.id_for_label }}">{{ nf.username.label }}</label>{{ nf.username }}</p>
-                <p><label for="{{ nf.password.id_for_label }}">{{ nf.password.label }}</label>{{ nf.password }}</p>
-            </div>
         </div>
         {% endfor %}
 
-        <button type="button" id="add-notification-btn" class="btn">+ Add notification</button>
+        <div class="btn-row" style="margin-bottom: 1rem;">
+            <button type="button" id="add-notification-btn" class="btn">+ Add notification</button>
+            <a class="btn" href="{% url 'profile_create' %}" target="_blank" rel="noopener">+ Create new profile</a>
+            <button type="button" id="refresh-profiles-btn" class="btn" title="Pick up a profile just created in another tab">↻ Refresh profile list</button>
+        </div>
 
         <div class="btn-row" style="margin-top: 1.25rem;">
             <button class="btn btn-primary" type="submit">Save</button>
@@ -172,18 +142,6 @@
     if (intervalUnitSelect) intervalUnitSelect.addEventListener("change", syncIntervalBounds);
     syncIntervalBounds();
 
-    document.querySelectorAll(".notif-row").forEach(function (row) {
-        var select = row.querySelector("select[name$='-notificator_name']");
-        if (!select) return;
-        function sync() {
-            row.querySelectorAll(".notif-type-fields").forEach(function (div) {
-                div.hidden = div.dataset.notificator !== select.value;
-            });
-        }
-        select.addEventListener("change", sync);
-        sync();
-    });
-
     var hiddenRows = Array.prototype.slice.call(document.querySelectorAll(".notif-row-extra[hidden]"));
     var revealed = 0;
     var addBtn = document.getElementById("add-notification-btn");
@@ -205,25 +163,45 @@
     document.querySelectorAll(".notif-row-remove").forEach(function (btn) {
         btn.addEventListener("click", function () {
             var row = btn.closest(".notif-row");
-            // Reset every field back to what the server actually rendered (not to blank) --
-            // fields like message_body_format/server have non-empty defaults, so blanking them
-            // would make Django think the row was "changed" and re-validate it on submit even
-            // after it's been removed.
-            row.querySelectorAll("input, textarea").forEach(function (el) {
-                if (el.type === "checkbox" || el.type === "radio") {
-                    el.checked = el.defaultChecked;
-                } else {
-                    el.value = el.defaultValue;
-                }
+            // Reset message_body_format back to what the server actually rendered (not to
+            // blank) -- it has a non-empty default, so blanking it would make Django think the
+            // row was "changed" and re-validate it on submit even after it's been removed.
+            row.querySelectorAll("textarea").forEach(function (el) {
+                el.value = el.defaultValue;
             });
-            row.querySelectorAll("select").forEach(function (el) {
-                Array.prototype.forEach.call(el.options, function (opt) {
-                    opt.selected = opt.defaultSelected;
-                });
-            });
+            // The profile select must be explicitly cleared, NOT reset to its rendered
+            // defaultSelected: a row pre-filled from a default profile (see views.query_create)
+            // renders with that profile pre-selected, so restoring defaultSelected would silently
+            // keep it attached -- has_changed() (forms.py) treats an empty profile as the one
+            // signal that this row is genuinely empty and should be skipped on submit.
+            var profileSelect = row.querySelector("select[name$='-profile']");
+            if (profileSelect) profileSelect.value = "";
             row.hidden = true;
         });
     });
+
+    var refreshBtn = document.getElementById("refresh-profiles-btn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", function () {
+            fetch("{% url 'profile_options' %}", {headers: {"X-Requested-With": "XMLHttpRequest"}})
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    document.querySelectorAll("select[name$='-profile']").forEach(function (select) {
+                        var current = select.value;
+                        var options = ['<option value="">-- select a notification profile --</option>'];
+                        data.profiles.forEach(function (profile) {
+                            options.push(
+                                '<option value="' + profile.pk + '">' +
+                                profile.name.replace(/&/g, "&amp;").replace(/</g, "&lt;") +
+                                " (" + profile.notificator_name + ")</option>"
+                            );
+                        });
+                        select.innerHTML = options.join("");
+                        select.value = current;
+                    });
+                });
+        });
+    }
 })();
 </script>
 {% endblock %}

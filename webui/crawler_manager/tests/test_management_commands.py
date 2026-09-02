@@ -44,7 +44,7 @@ def test_migrate_yaml_config_imports_known_spiders(config_file: pathlib.Path) ->
     query = Query.objects.get(spider_name="example", name="kia")
     assert query.url == "https://example.com/kia"
     assert query.cron_schedule == "*/15 * * * *"
-    assert QueryNotificationConfig.objects.filter(query=query, notificator_name="email").exists()
+    assert QueryNotificationConfig.objects.filter(query=query, profile__notificator_name="email").exists()
 
 
 def test_migrate_yaml_config_skips_unknown_spider(config_file: pathlib.Path) -> None:

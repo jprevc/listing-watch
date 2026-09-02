@@ -269,6 +269,7 @@
         {% if user.is_authenticated %}
         <div class="links">
             <a href="{% url 'query_list' %}">Queries</a>
+            <a href="{% url 'profile_list' %}">Notification profiles</a>
             <a href="{% url 'found_item_list' %}">Found items</a>
             <a href="{% url 'run_history_list' %}">Run history</a>
             <a href="/admin/">Django admin</a>

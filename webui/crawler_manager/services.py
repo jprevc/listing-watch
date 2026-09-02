@@ -116,10 +116,14 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
         run.new_items_count = len(new_items)
 
         if new_items:
-            notifications_config = {
-                nc.notificator_name: nc.config for nc in query.notification_configs.filter(enabled=True)
-            }
-            scrape.send_notifications(notifications_config, query.name, new_items)
+            # A list of (type, config) pairs rather than a dict keyed by type: a query can attach
+            # more than one profile of the same notificator type (e.g. two ntfy topics), and each
+            # attachment must still fire independently.
+            notification_configs = [
+                (nc.profile.notificator_name, {**nc.profile.config, "message_body_format": nc.message_body_format})
+                for nc in query.notification_configs.select_related("profile")
+            ]
+            scrape.send_notifications(notification_configs, query.name, new_items)
 
         # A stopped run still keeps whatever was found up to that point -- only the terminal
         # status differs from a normal completion.

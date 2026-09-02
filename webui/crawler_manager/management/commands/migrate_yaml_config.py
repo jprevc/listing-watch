@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 from listing_watch import configuration as nc_configuration
 
 from crawler_manager import schedule_utils
-from crawler_manager.models import Query, QueryNotificationConfig
+from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
 
 KNOWN_SPIDER_NAMES = {"example", "example"}
 
@@ -89,10 +89,23 @@ class Command(BaseCommand):
                 self.stdout.write(f"{'Created' if created else 'Already exists'}: {query}")
 
                 for notificator_name, notificator_config in spider_config.notifications.items():
+                    config = dict(notificator_config)
+                    message_body_format = config.pop("message_body_format", None) or DEFAULT_MESSAGE_BODY_FORMAT
+                    # Dropped entirely (see forms.py/notificators.py): never used in practice.
+                    config.pop("send_separately", None)
+
+                    # No --user option on this legacy one-time import (queries above are likewise
+                    # created without one): profiles land owned by nobody, same as the query they
+                    # attach to, until an admin reassigns both by hand.
+                    profile, _ = NotificationProfile.objects.get_or_create(
+                        user=None,
+                        name=f"{spider_name}/{query_name} ({notificator_name})",
+                        defaults={"notificator_name": notificator_name, "config": config},
+                    )
                     _, notif_created = QueryNotificationConfig.objects.get_or_create(
                         query=query,
-                        notificator_name=notificator_name,
-                        defaults={"config": notificator_config, "enabled": True},
+                        profile=profile,
+                        defaults={"message_body_format": message_body_format},
                     )
                     if notif_created:
                         self.stdout.write(f"  + notification config: {notificator_name}")

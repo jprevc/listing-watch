@@ -29,6 +29,7 @@
     <thead>
         <tr>
             <th>Query</th>
+            {% if request.user.is_staff %}<th>Owner</th>{% endif %}
             <th>Spider</th>
             <th>Trigger</th>
             <th>Status</th>
@@ -42,6 +43,7 @@
         {% for run in page_obj %}
         <tr>
             <td>{{ run.query_name }}</td>
+            {% if request.user.is_staff %}<td>{{ run.user|default:"—" }}</td>{% endif %}
             <td>{{ run.spider_name }}</td>
             <td>{{ run.get_trigger_display }}</td>
             <td><span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span></td>
@@ -60,11 +62,11 @@
         </tr>
         {% if run.status == "failed" and run.error_message %}
         <tr>
-            <td colspan="8" class="wrap" style="color: var(--danger-text); font-size: 0.85rem;">{{ run.error_message }}</td>
+            <td colspan="{% if request.user.is_staff %}9{% else %}8{% endif %}" class="wrap" style="color: var(--danger-text); font-size: 0.85rem;">{{ run.error_message }}</td>
         </tr>
         {% endif %}
         {% empty %}
-        <tr><td colspan="8" class="empty">No runs yet.</td></tr>
+        <tr><td colspan="{% if request.user.is_staff %}9{% else %}8{% endif %}" class="empty">No runs yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

@@ -7,6 +7,7 @@
     <thead>
         <tr>
             <th>Name</th>
+            {% if request.user.is_staff %}<th>Owner</th>{% endif %}
             <th>Spider</th>
             <th>URL</th>
             <th>Schedule</th>
@@ -19,6 +20,7 @@
         {% for query in queries %}
         <tr>
             <td>{{ query.name }}</td>
+            {% if request.user.is_staff %}<td>{{ query.user|default:"—" }}</td>{% endif %}
             <td>{{ query.spider_name }}</td>
             <td><a href="{{ query.url }}" target="_blank" rel="noopener">{{ query.url|truncatechars:50 }}</a></td>
             <td>{{ query.cron_schedule|default:"manual only" }}</td>
@@ -47,7 +49,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="empty">No queries configured yet. <a href="{% url 'query_create' %}">Add one</a>.</td></tr>
+        <tr><td colspan="{% if request.user.is_staff %}8{% else %}7{% endif %}" class="empty">No queries configured yet. <a href="{% url 'query_create' %}">Add one</a>.</td></tr>
         {% endfor %}
     </tbody>
 </table>

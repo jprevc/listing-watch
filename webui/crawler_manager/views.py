@@ -12,9 +12,28 @@ from crawler_manager.registry import available_spider_choices, spider_item_field
 PAGE_SIZE = 25
 
 
+def _visible_queries(request):
+    """Staff see every user's queries; everyone else only sees their own."""
+    if request.user.is_staff:
+        return Query.objects.all()
+    return Query.objects.filter(user=request.user)
+
+
+def _visible_runs(request):
+    if request.user.is_staff:
+        return CrawlRun.objects.all()
+    return CrawlRun.objects.filter(user=request.user)
+
+
+def _visible_items(request):
+    if request.user.is_staff:
+        return FoundItem.objects.all()
+    return FoundItem.objects.filter(user=request.user)
+
+
 @login_required
 def query_list(request):
-    queries = Query.objects.prefetch_related("notification_configs").all()
+    queries = _visible_queries(request).prefetch_related("notification_configs")
     return render(request, "crawler_manager/query_list.html", {"queries": queries})
 
 
@@ -25,7 +44,9 @@ def query_create(request):
         form = QueryForm(request.POST)
         formset = QueryNotificationConfigFormSet(request.POST)
         if form.is_valid() and formset.is_valid():
-            query = form.save()
+            query = form.save(commit=False)
+            query.user = request.user
+            query.save()
             formset.instance = query
             formset.save()
             messages.success(request, f"Query '{query.name}' created.")
@@ -43,7 +64,7 @@ def query_create(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def query_edit(request, pk):
-    query = get_object_or_404(Query, pk=pk)
+    query = get_object_or_404(_visible_queries(request), pk=pk)
     if request.method == "POST":
         form = QueryForm(request.POST, instance=query)
         formset = QueryNotificationConfigFormSet(request.POST, instance=query)
@@ -65,7 +86,7 @@ def query_edit(request, pk):
 @login_required
 @require_POST
 def query_delete(request, pk):
-    query = get_object_or_404(Query, pk=pk)
+    query = get_object_or_404(_visible_queries(request), pk=pk)
     query.delete()
     messages.success(request, f"Query '{query.name}' deleted.")
     return redirect("query_list")
@@ -74,7 +95,7 @@ def query_delete(request, pk):
 @login_required
 @require_POST
 def query_run_now(request, pk):
-    query = get_object_or_404(Query, pk=pk)
+    query = get_object_or_404(_visible_queries(request), pk=pk)
     scheduling.trigger_manual_run(query)
     return render(request, "crawler_manager/_run_status_response.html", {"query": query, "just_triggered": True})
 
@@ -82,7 +103,7 @@ def query_run_now(request, pk):
 @login_required
 @require_POST
 def query_stop_run(request, pk):
-    query = get_object_or_404(Query, pk=pk)
+    query = get_object_or_404(_visible_queries(request), pk=pk)
     # A no-op if nothing is currently running (e.g. it already finished) -- the rendered badge
     # below just reflects whatever the real state turns out to be.
     CrawlRun.objects.filter(query=query, status=CrawlRun.Status.RUNNING).update(cancel_requested=True)
@@ -94,13 +115,13 @@ def query_run_status(request, pk):
     # Polled by the badge itself (see _run_status_badge.html) -- never "just triggered", so it
     # reflects only the real current CrawlRun state, and polling naturally stops once that
     # reaches success/failed.
-    query = get_object_or_404(Query, pk=pk)
+    query = get_object_or_404(_visible_queries(request), pk=pk)
     return render(request, "crawler_manager/_run_status_response.html", {"query": query, "just_triggered": False})
 
 
 @login_required
 def found_item_list(request):
-    items = FoundItem.objects.all()
+    items = _visible_items(request)
 
     selected_spider = request.GET.get("spider", "")
     if selected_spider:
@@ -123,10 +144,10 @@ def found_item_list(request):
         else:
             selected_run_kind = "found"
             items = items.filter(last_seen_run_id=selected_run)
-        run_filter = get_object_or_404(CrawlRun, pk=selected_run)
+        run_filter = get_object_or_404(_visible_runs(request), pk=selected_run)
 
     page_obj = Paginator(items, PAGE_SIZE).get_page(request.GET.get("page"))
-    query_names = FoundItem.objects.order_by("query_name").values_list("query_name", flat=True).distinct()
+    query_names = _visible_items(request).order_by("query_name").values_list("query_name", flat=True).distinct()
 
     return render(
         request,
@@ -145,7 +166,7 @@ def found_item_list(request):
 
 @login_required
 def run_history_list(request):
-    runs = CrawlRun.objects.all()
+    runs = _visible_runs(request)
 
     selected_status = request.GET.get("status", "")
     if selected_status:
@@ -156,7 +177,7 @@ def run_history_list(request):
         runs = runs.filter(query_name=selected_query)
 
     page_obj = Paginator(runs, PAGE_SIZE).get_page(request.GET.get("page"))
-    query_names = CrawlRun.objects.order_by("query_name").values_list("query_name", flat=True).distinct()
+    query_names = _visible_runs(request).order_by("query_name").values_list("query_name", flat=True).distinct()
 
     return render(
         request,

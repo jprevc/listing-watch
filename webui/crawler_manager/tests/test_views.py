@@ -43,6 +43,66 @@ def test_query_create_creates_query(admin_client) -> None:
     assert Query.objects.filter(name="new_query").exists()
 
 
+def test_query_create_sets_owner_to_current_user(admin_client, django_user_model) -> None:
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "cron_schedule": "",
+        "is_active": "on",
+        **_formset_management_data(),
+    }
+    admin_client.post(reverse("query_create"), data)
+
+    query = Query.objects.get(name="new_query")
+    assert query.user == django_user_model.objects.get(username="admin")
+
+
+def test_query_list_only_shows_own_queries_for_non_staff(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
+    Query.objects.create(name="not_mine", spider_name="example", url="https://example.com", user=other)
+
+    client.force_login(owner)
+    response = client.get(reverse("query_list"))
+
+    assert b"mine" in response.content
+    assert b"not_mine" not in response.content
+
+
+def test_query_list_shows_all_queries_for_staff(admin_client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    Query.objects.create(name="someone_elses", spider_name="example", url="https://example.com", user=owner)
+
+    response = admin_client.get(reverse("query_list"))
+
+    assert b"someone_elses" in response.content
+
+
+def test_query_edit_404s_for_non_owner(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=owner)
+
+    client.force_login(other)
+    response = client.get(reverse("query_edit", args=[query.pk]))
+
+    assert response.status_code == 404
+
+
+def test_query_delete_404s_for_non_owner(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=owner)
+
+    client.force_login(other)
+    response = client.post(reverse("query_delete", args=[query.pk]))
+
+    assert response.status_code == 404
+    assert Query.objects.filter(pk=query.pk).exists()
+
+
 def test_query_run_now_triggers_manual_run(admin_client, monkeypatch) -> None:
     query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
 
@@ -135,3 +195,47 @@ def test_found_item_list_run_kind_found_shows_new_and_reencountered_items(admin_
     assert new_item.title in content
     assert reencountered_item.title in content
     assert unrelated_item.title not in content
+
+
+def test_found_item_list_only_shows_own_items_for_non_staff(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    my_query = Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
+    their_query = Query.objects.create(name="theirs", spider_name="example", url="https://example.com", user=other)
+    my_item = FoundItem.objects.create(
+        query=my_query, user=owner, query_name=my_query.name, spider_name=my_query.spider_name,
+        content_hash="hash-mine", payload={}, title="my-item",
+    )
+    their_item = FoundItem.objects.create(
+        query=their_query, user=other, query_name=their_query.name, spider_name=their_query.spider_name,
+        content_hash="hash-theirs", payload={}, title="their-item",
+    )
+
+    client.force_login(owner)
+    response = client.get(reverse("found_item_list"))
+
+    content = response.content.decode()
+    assert my_item.title in content
+    assert their_item.title not in content
+
+
+def test_run_history_list_only_shows_own_runs_for_non_staff(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    my_query = Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
+    their_query = Query.objects.create(name="theirs", spider_name="example", url="https://example.com", user=other)
+    CrawlRun.objects.create(
+        query=my_query, user=owner, query_name=my_query.name, spider_name=my_query.spider_name,
+        trigger=CrawlRun.Trigger.MANUAL,
+    )
+    CrawlRun.objects.create(
+        query=their_query, user=other, query_name=their_query.name, spider_name=their_query.spider_name,
+        trigger=CrawlRun.Trigger.MANUAL,
+    )
+
+    client.force_login(owner)
+    response = client.get(reverse("run_history_list"))
+
+    content = response.content.decode()
+    assert "mine" in content
+    assert "theirs" not in content

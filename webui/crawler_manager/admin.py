@@ -10,16 +10,16 @@ class QueryNotificationConfigInline(admin.TabularInline):
 
 @admin.register(Query)
 class QueryAdmin(admin.ModelAdmin):
-    list_display = ("name", "spider_name", "url", "cron_schedule", "is_active", "updated_at")
-    list_filter = ("spider_name", "is_active")
+    list_display = ("name", "user", "spider_name", "url", "cron_schedule", "is_active", "updated_at")
+    list_filter = ("user", "spider_name", "is_active")
     search_fields = ("name", "url")
     inlines = [QueryNotificationConfigInline]
 
 
 @admin.register(FoundItem)
 class FoundItemAdmin(admin.ModelAdmin):
-    list_display = ("spider_name", "query_name", "title", "price", "first_seen_at")
-    list_filter = ("spider_name", "query_name")
+    list_display = ("spider_name", "query_name", "user", "title", "price", "first_seen_at")
+    list_filter = ("spider_name", "query_name", "user")
     search_fields = ("title", "url")
     date_hierarchy = "first_seen_at"
 
@@ -28,6 +28,7 @@ class FoundItemAdmin(admin.ModelAdmin):
 class CrawlRunAdmin(admin.ModelAdmin):
     list_display = (
         "query_name",
+        "user",
         "spider_name",
         "trigger",
         "status",
@@ -36,6 +37,6 @@ class CrawlRunAdmin(admin.ModelAdmin):
         "items_found_count",
         "new_items_count",
     )
-    list_filter = ("status", "trigger", "spider_name")
+    list_filter = ("status", "trigger", "spider_name", "user")
     search_fields = ("query_name", "error_message")
     date_hierarchy = "started_at"

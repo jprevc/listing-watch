@@ -39,6 +39,7 @@
             <th>Price</th>
             <th>Spider</th>
             <th>Query</th>
+            {% if request.user.is_staff %}<th>Owner</th>{% endif %}
             <th>First seen</th>
             <th></th>
         </tr>
@@ -53,6 +54,7 @@
             <td>{{ item.price|default:"—" }}</td>
             <td>{{ item.spider_name }}</td>
             <td>{{ item.query_name }}</td>
+            {% if request.user.is_staff %}<td>{{ item.user|default:"—" }}</td>{% endif %}
             <td>{{ item.first_seen_at }}</td>
             <td>
                 <button type="button" class="btn payload-toggle" aria-expanded="false">View details</button>
@@ -63,10 +65,10 @@
              row, so a wide/tall payload inline there resizes that column -- and every other row's
              layout with it -- the moment it's opened, which is disorienting to scroll through. -->
         <tr class="payload-row" hidden>
-            <td colspan="6" class="wrap"><pre>{{ item.payload|pprint }}</pre></td>
+            <td colspan="{% if request.user.is_staff %}7{% else %}6{% endif %}" class="wrap"><pre>{{ item.payload|pprint }}</pre></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="empty">No items found yet.</td></tr>
+        <tr><td colspan="{% if request.user.is_staff %}7{% else %}6{% endif %}" class="empty">No items found yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

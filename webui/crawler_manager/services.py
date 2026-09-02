@@ -37,6 +37,7 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
             content_hash=item_hash,
             defaults={
                 "query": query,
+                "user": query.user,
                 "run": run,
                 "last_seen_run": run,
                 "payload": item,
@@ -67,6 +68,7 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
 
     run = CrawlRun.objects.create(
         query=query,
+        user=query.user,
         query_name=query.name,
         spider_name=query.spider_name,
         trigger=trigger,

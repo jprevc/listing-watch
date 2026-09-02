@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from listing_watch import configuration as nc_configuration
 
+from crawler_manager import schedule_utils
 from crawler_manager.models import Query, QueryNotificationConfig
 
 KNOWN_SPIDER_NAMES = {"example", "example"}
@@ -33,6 +34,19 @@ def _schedule_to_cron(schedule: nc_configuration.ScheduleConfig | None) -> str:
     if units == "weeks" and every == 1:
         return "0 0 * * 0"
     return ""
+
+
+def _schedule_fields(cron: str) -> dict[str, object]:
+    """Query field values consistent with a given (possibly blank) crontab expression."""
+    if not cron:
+        return {"schedule_mode": Query.ScheduleMode.MANUAL}
+
+    parsed = schedule_utils.from_cron(cron)
+    if parsed is not None:
+        value, unit = parsed
+        return {"schedule_mode": Query.ScheduleMode.SIMPLE, "interval_value": value, "interval_unit": unit}
+
+    return {"schedule_mode": Query.ScheduleMode.ADVANCED, "cron_schedule": cron}
 
 
 class Command(BaseCommand):
@@ -70,7 +84,7 @@ class Command(BaseCommand):
                 query, created = Query.objects.get_or_create(
                     spider_name=spider_name,
                     name=query_name,
-                    defaults={"url": url, "cron_schedule": default_cron, "is_active": True},
+                    defaults={"url": url, "is_active": True, **_schedule_fields(default_cron)},
                 )
                 self.stdout.write(f"{'Created' if created else 'Already exists'}: {query}")
 

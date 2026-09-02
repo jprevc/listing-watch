@@ -33,7 +33,7 @@ def test_query_create_creates_query(admin_client) -> None:
         "name": "new_query",
         "spider_name": "example",
         "url": "https://example.com/search",
-        "cron_schedule": "",
+        "schedule_mode": "manual",
         "is_active": "on",
         **_formset_management_data(),
     }
@@ -48,7 +48,7 @@ def test_query_create_sets_owner_to_current_user(admin_client, django_user_model
         "name": "new_query",
         "spider_name": "example",
         "url": "https://example.com/search",
-        "cron_schedule": "",
+        "schedule_mode": "manual",
         "is_active": "on",
         **_formset_management_data(),
     }
@@ -56,6 +56,57 @@ def test_query_create_sets_owner_to_current_user(admin_client, django_user_model
 
     query = Query.objects.get(name="new_query")
     assert query.user == django_user_model.objects.get(username="admin")
+
+
+def test_query_create_simple_mode_derives_cron_schedule(admin_client) -> None:
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "schedule_mode": "simple",
+        "interval_value": "15",
+        "interval_unit": "minutes",
+        "is_active": "on",
+        **_formset_management_data(),
+    }
+    response = admin_client.post(reverse("query_create"), data)
+
+    assert response.status_code == 302
+    query = Query.objects.get(name="new_query")
+    assert query.cron_schedule == "*/15 * * * *"
+
+
+def test_query_create_simple_mode_rejects_value_below_floor(admin_client) -> None:
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "schedule_mode": "simple",
+        "interval_value": "1",
+        "interval_unit": "minutes",
+        "is_active": "on",
+        **_formset_management_data(),
+    }
+    response = admin_client.post(reverse("query_create"), data)
+
+    assert response.status_code == 200
+    assert not Query.objects.filter(name="new_query").exists()
+
+
+def test_query_create_advanced_mode_requires_cron_schedule(admin_client) -> None:
+    data = {
+        "name": "new_query",
+        "spider_name": "example",
+        "url": "https://example.com/search",
+        "schedule_mode": "advanced",
+        "cron_schedule": "",
+        "is_active": "on",
+        **_formset_management_data(),
+    }
+    response = admin_client.post(reverse("query_create"), data)
+
+    assert response.status_code == 200
+    assert not Query.objects.filter(name="new_query").exists()
 
 
 def test_query_list_only_shows_own_queries_for_non_staff(client, django_user_model) -> None:

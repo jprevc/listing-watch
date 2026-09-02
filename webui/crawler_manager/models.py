@@ -9,11 +9,17 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from crawler_manager import schedule_utils
 from crawler_manager.registry import available_notificator_choices, available_spider_choices
 
 
 class Query(models.Model):
     """A single crawl target: a name + URL to run through a given spider, on an optional schedule."""
+
+    class ScheduleMode(models.TextChoices):
+        MANUAL = "manual", "Manual only"
+        SIMPLE = "simple", "Every N minutes/hours/days"
+        ADVANCED = "advanced", "Custom cron expression"
 
     # Nullable/SET_NULL (like the query/run FKs below) rather than required: a query is always
     # created with an owner by the view layer, but deleting that User account shouldn't cascade
@@ -22,10 +28,21 @@ class Query(models.Model):
     name = models.CharField(max_length=255, help_text="Query name, passed to the spider (e.g. used in messages).")
     spider_name = models.CharField(max_length=64, choices=available_spider_choices)
     url = models.URLField(max_length=2000)
+    schedule_mode = models.CharField(max_length=16, choices=ScheduleMode.choices, default=ScheduleMode.SIMPLE)
+    interval_value = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Used when schedule_mode is 'simple'."
+    )
+    interval_unit = models.CharField(
+        max_length=16, choices=schedule_utils.UNIT_CHOICES, blank=True, help_text="Used when schedule_mode is 'simple'."
+    )
     cron_schedule = models.CharField(
         max_length=64,
         blank=True,
-        help_text="Standard 5-field crontab expression (e.g. '*/15 * * * *'). Leave blank to only run manually.",
+        help_text=(
+            "Standard 5-field crontab expression (e.g. '*/15 * * * *'). Only used directly when "
+            "schedule_mode is 'advanced' -- otherwise it's derived automatically from "
+            "interval_value/interval_unit, or left blank for manual-only."
+        ),
     )
     max_pages = models.PositiveIntegerField(
         null=True,
@@ -46,6 +63,28 @@ class Query(models.Model):
 
     def __str__(self) -> str:
         return f"{self.spider_name}/{self.name}"
+
+    def save(self, *args, **kwargs) -> None:
+        # cron_schedule is the only thing scheduling.py reads, so it's kept derived here rather
+        # than in the form: any code path that saves a Query (form, admin, shell, management
+        # commands) gets a consistent, up-to-date crontab expression.
+        if self.schedule_mode == self.ScheduleMode.MANUAL:
+            self.cron_schedule = ""
+        elif self.schedule_mode == self.ScheduleMode.SIMPLE and self.interval_value and self.interval_unit:
+            self.cron_schedule = schedule_utils.to_cron(self.interval_value, self.interval_unit)
+        # ADVANCED (or an incomplete SIMPLE row pending form validation): cron_schedule is left
+        # as whatever was explicitly set.
+        super().save(*args, **kwargs)
+
+    @property
+    def schedule_display(self) -> str:
+        """Human-readable schedule summary for list/admin views."""
+        if self.schedule_mode == self.ScheduleMode.MANUAL:
+            return "Manual only"
+        if self.schedule_mode == self.ScheduleMode.SIMPLE and self.interval_value and self.interval_unit:
+            unit = self.interval_unit if self.interval_value != 1 else self.interval_unit.rstrip("s")
+            return f"Every {self.interval_value} {unit}"
+        return self.cron_schedule or "Manual only"
 
 
 class QueryNotificationConfig(models.Model):

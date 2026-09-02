@@ -6,7 +6,37 @@
     <form method="post">
         {% csrf_token %}
         {{ spider_item_fields|json_script:"spider-item-fields" }}
-        {{ form.as_p }}
+
+        {% for field in form %}
+            {% if field.name == "schedule_mode" %}
+            <div class="field">
+                <label>Schedule</label>
+                <div id="schedule-mode-choices">{{ field }}</div>
+                {{ field.errors }}
+            </div>
+            <p id="schedule-simple-fields">
+                <label for="{{ form.interval_value.id_for_label }}">Every</label>
+                {{ form.interval_value }}
+                {{ form.interval_unit }}
+                {{ form.interval_value.errors }}
+                {{ form.interval_unit.errors }}
+            </p>
+            <p id="schedule-advanced-fields">
+                <label for="{{ form.cron_schedule.id_for_label }}">{{ form.cron_schedule.label }}</label>
+                {{ form.cron_schedule }}
+                {{ form.cron_schedule.errors }}
+                <span class="helptext">{{ form.cron_schedule.help_text }}</span>
+            </p>
+            {% elif field.name == "interval_value" or field.name == "interval_unit" or field.name == "cron_schedule" %}
+            {% else %}
+            <p>
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+            </p>
+            {% endif %}
+        {% endfor %}
 
         <h2>Notifications</h2>
         {{ formset.management_form }}
@@ -108,6 +138,39 @@
 
     if (spiderSelect) spiderSelect.addEventListener("change", syncMessageFormatHelp);
     syncMessageFormatHelp();
+
+    var scheduleRadios = document.querySelectorAll("#schedule-mode-choices input[name='schedule_mode']");
+    var simpleFields = document.getElementById("schedule-simple-fields");
+    var advancedFields = document.getElementById("schedule-advanced-fields");
+
+    function syncScheduleFields() {
+        var checked = document.querySelector("#schedule-mode-choices input[name='schedule_mode']:checked");
+        var mode = checked ? checked.value : "manual";
+        if (simpleFields) simpleFields.hidden = mode !== "simple";
+        if (advancedFields) advancedFields.hidden = mode !== "advanced";
+    }
+
+    scheduleRadios.forEach(function (radio) {
+        radio.addEventListener("change", syncScheduleFields);
+    });
+    syncScheduleFields();
+
+    // Mirrors crawler_manager.schedule_utils.BOUNDS -- purely a browser-side hint (arrow-key
+    // step limits, spinner clamping); the form's clean() is the actual source of truth.
+    var INTERVAL_BOUNDS = {minutes: [5, 59], hours: [1, 23], days: [1, 30]};
+    var intervalValueInput = document.getElementById("id_interval_value");
+    var intervalUnitSelect = document.getElementById("id_interval_unit");
+
+    function syncIntervalBounds() {
+        if (!intervalValueInput || !intervalUnitSelect) return;
+        var bounds = INTERVAL_BOUNDS[intervalUnitSelect.value];
+        if (!bounds) return;
+        intervalValueInput.min = bounds[0];
+        intervalValueInput.max = bounds[1];
+    }
+
+    if (intervalUnitSelect) intervalUnitSelect.addEventListener("change", syncIntervalBounds);
+    syncIntervalBounds();
 
     document.querySelectorAll(".notif-row").forEach(function (row) {
         var select = row.querySelector("select[name$='-notificator_name']");

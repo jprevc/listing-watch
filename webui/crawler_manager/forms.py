@@ -3,6 +3,7 @@ from __future__ import annotations
 from django import forms
 from django.forms import inlineformset_factory
 
+from crawler_manager import schedule_utils
 from crawler_manager.models import Query, QueryNotificationConfig
 
 # Maps each notificator type to its type-specific form fields, as (form_field_name, config_key)
@@ -39,11 +40,46 @@ NOTIFICATOR_REQUIRED_FIELDS: dict[str, list[str]] = {
 class QueryForm(forms.ModelForm):
     class Meta:
         model = Query
-        fields = ["name", "spider_name", "url", "cron_schedule", "max_pages", "is_active"]
+        fields = [
+            "name", "spider_name", "url",
+            "schedule_mode", "interval_value", "interval_unit", "cron_schedule",
+            "max_pages", "is_active",
+        ]
         widgets = {
-            "cron_schedule": forms.TextInput(attrs={"placeholder": "*/15 * * * * (leave blank for manual only)"}),
+            "schedule_mode": forms.RadioSelect,
+            "interval_value": forms.NumberInput(attrs={"min": 1}),
+            "cron_schedule": forms.TextInput(attrs={"placeholder": "*/15 * * * *"}),
             "max_pages": forms.NumberInput(attrs={"placeholder": "unlimited", "min": 1}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk is None:
+            # New query: pre-fill the simple picker with a sensible default (matches the
+            # interval the old raw-cron placeholder used to suggest) rather than leaving it
+            # blank and forcing every new user to make a choice just to accept the default.
+            self.fields["interval_value"].initial = 15
+            self.fields["interval_unit"].initial = schedule_utils.MINUTES
+
+    def clean(self):
+        cleaned = super().clean()
+        mode = cleaned.get("schedule_mode")
+
+        if mode == Query.ScheduleMode.SIMPLE:
+            value = cleaned.get("interval_value")
+            unit = cleaned.get("interval_unit")
+            if not value:
+                self.add_error("interval_value", "Enter a number for the schedule interval.")
+            if not unit:
+                self.add_error("interval_unit", "Choose a unit for the schedule interval.")
+            if value and unit:
+                low, high = schedule_utils.BOUNDS[unit]
+                if not low <= value <= high:
+                    self.add_error("interval_value", f"Must be between {low} and {high} for {unit}.")
+        elif mode == Query.ScheduleMode.ADVANCED and not cleaned.get("cron_schedule"):
+            self.add_error("cron_schedule", "Enter a cron expression, or switch to Simple/Manual.")
+
+        return cleaned
 
 
 class QueryNotificationConfigForm(forms.ModelForm):

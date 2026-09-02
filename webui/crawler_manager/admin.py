@@ -10,7 +10,7 @@ class QueryNotificationConfigInline(admin.TabularInline):
 
 @admin.register(Query)
 class QueryAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "spider_name", "url", "cron_schedule", "is_active", "updated_at")
+    list_display = ("name", "user", "spider_name", "url", "schedule_mode", "cron_schedule", "is_active", "updated_at")
     list_filter = ("user", "spider_name", "is_active")
     search_fields = ("name", "url")
     inlines = [QueryNotificationConfigInline]

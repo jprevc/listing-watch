@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-VOLUME app/data app/config
+VOLUME app/data
 
 RUN pip install --no-cache-dir uv \
     && uv sync --frozen --no-dev --group web
@@ -23,7 +23,5 @@ RUN playwright install --with-deps chromium \
 
 EXPOSE 8000
 
-# Default command runs the web UI (Django + APScheduler); the listing_watch CLI is still
-# available in the same image by overriding the command, e.g.:
-#   docker run <image> python -m listing_watch scrape
+# Runs the web UI (Django + APScheduler).
 ENTRYPOINT ["webui/docker-entrypoint.sh"]

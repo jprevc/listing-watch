@@ -15,10 +15,7 @@ classifiers = [
 ]
 dependencies = [
     "beautifulsoup4>=4.9",
-    "pydantic>=1.8",
-    "PyYAML>=5.4",
     "requests>=2.25",
-    "schedule>=1.1",
     "importlib_metadata>=1.0",
     "playwright>=1.45",
 ]
@@ -33,7 +30,6 @@ disallow_incomplete_defs = true
 disallow_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "importlib_metadata"
@@ -48,18 +44,15 @@ Repository = "https://github.com/jprevc/listing-watch"
 Changelog = "https://github.com/jprevc/listing-watch/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
 test = [ "pytest", "pytest-cov", "pytest-django",]
 
 [dependency-groups]
-dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests", "types-PyYAML",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
 web = [ "django>=5.0,<6", "apscheduler>=3.10,<4", "django-apscheduler>=0.7", "django-htmx>=1.17", "gunicorn>=22", "whitenoise>=6.7",]
 
 [tool.uv]
 default-groups = ["dev"]
-
-[project.scripts]
-listing-watch = "listing_watch.__main__:main"
 
 [tool.setuptools]
 packages = [ "listing_watch",]

@@ -70,6 +70,7 @@
         }
 
         * { box-sizing: border-box; }
+        [x-cloak] { display: none !important; }
 
         body {
             font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -417,6 +418,7 @@
                 margin-bottom: 0.15rem;
                 border-bottom: 1px solid var(--border);
             }
+            .table-cards .btn-row-nowrap { flex-wrap: wrap; }
         }
 
         .pagination {
@@ -485,6 +487,28 @@
             padding-top: 1rem;
         }
         .form-section .form-section-body > p:last-child { margin-bottom: 0; }
+
+        /* --- Confirm dialog (replaces browser confirm() for destructive actions) --- */
+        .confirm-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 60;
+        }
+        .confirm-dialog {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 1.25rem;
+            max-width: 22rem;
+            width: 100%;
+        }
+        .confirm-dialog p { margin: 0 0 1.1rem; }
     </style>
 </head>
 <body>

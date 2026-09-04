@@ -2,7 +2,7 @@
 {% block title %}Notification profiles{% endblock %}
 {% block content %}
 <h1>Notification profiles</h1>
-<div class="table-wrap">
+<div class="table-wrap table-cards">
 <table>
     <thead>
         <tr>
@@ -15,17 +15,23 @@
     <tbody>
         {% for profile in profiles %}
         <tr>
-            <td>{{ profile.name }}</td>
-            <td>{{ profile.notificator_name }}</td>
-            <td>{{ profile.is_default|yesno:"yes," }}</td>
+            <td class="cell-primary">{{ profile.name }}</td>
+            <td data-label="Type">{{ profile.notificator_name }}</td>
+            <td data-label="Default">{{ profile.is_default|yesno:"yes," }}</td>
             <td>
-                <div class="btn-row btn-row-nowrap">
+                <div class="btn-row btn-row-nowrap" x-data="{ confirmDelete: false }">
                     <a class="btn" href="{% url 'profile_edit' profile.pk %}">Edit</a>
-                    <form method="post" action="{% url 'profile_delete' profile.pk %}"
-                          onsubmit="return confirm('Delete notification profile {{ profile.name }}?');">
-                        {% csrf_token %}
-                        <button class="btn btn-danger" type="submit">Delete</button>
-                    </form>
+                    <button type="button" class="btn btn-danger" @click="confirmDelete = true">Delete</button>
+                    <form method="post" action="{% url 'profile_delete' profile.pk %}" x-ref="deleteForm">{% csrf_token %}</form>
+                    <div x-cloak x-show="confirmDelete" x-transition.opacity class="confirm-overlay" @keydown.escape.window="confirmDelete = false">
+                        <div class="confirm-dialog" @click.outside="confirmDelete = false">
+                            <p>Delete notification profile <strong>{{ profile.name }}</strong>? This cannot be undone.</p>
+                            <div class="btn-row">
+                                <button type="button" class="btn" @click="confirmDelete = false">Cancel</button>
+                                <button type="button" class="btn btn-danger" @click="$refs.deleteForm.requestSubmit()">Delete</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </td>
         </tr>

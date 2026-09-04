@@ -11,8 +11,9 @@ pytestmark = pytest.mark.django_db
 class _FakeSpider:
     items: list[dict] = []
 
-    def __init__(self, queries):
-        self.queries = queries
+    def __init__(self, query_name, url):
+        self.query_name = query_name
+        self.url = url
 
     def run(self, max_pages=None, should_stop=None):
         return self.items
@@ -90,8 +91,9 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
     class _CancellingSpider:
         items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
 
-        def __init__(self, queries):
-            self.queries = queries
+        def __init__(self, query_name, url):
+            self.query_name = query_name
+            self.url = url
 
         def run(self, max_pages=None, should_stop=None):
             query.runs.update(cancel_requested=True)

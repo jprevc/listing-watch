@@ -103,13 +103,15 @@ def test_length_of_divided_messages_is_equal_to_original(
     num_users: int,
 ):
     """
-    Test that total length of divided items in 'send_items' method is equal to original message.
+    Test that total length of divided items in 'send_items' method is equal to original message,
+    plus the "Query: ..." header each standalone (send_separately) message carries.
     """
     _send_test_items(pushover_notificator, num_test_items, text_length, num_users, send_separately=True)
 
-    # check that sum of all messages lengths is equal to original text length
+    # check that sum of all messages lengths is equal to original text length plus one header per message
+    header_length = len(f"Query: {TEST_QUERY}\n\n")
     messages_length_sum = sum(len(message) for message in session_mock.simulated_messages)
-    original_txt_length = text_length * num_test_items * num_users
+    original_txt_length = (text_length + header_length) * num_test_items * num_users
     assert original_txt_length == messages_length_sum
 
 
@@ -130,8 +132,11 @@ def test_send_items_separate_correctly_separates_items(
     assert num_test_items * num_users == len(session_mock.simulated_messages)
 
 
+TEST_QUERY = "q"
+
+
 def _send_test_items(pushover, num_test_items, text_length, num_users, send_separately):
-    items = [{"data": "a" * text_length}] * num_test_items
+    items = [{"data": "a" * text_length, "query": TEST_QUERY}] * num_test_items
     pushover.configuration["recipients"] = ",".join(["user_key"] * num_users)
 
     pushover.send_items("Test subject", items, "{data}", send_separately=send_separately)
@@ -242,6 +247,63 @@ def test_ntfy_username_password_sets_basic_auth(ntfy_session_mock: NtfySessionMo
 
 def test_ntfy_send_single_item_sets_click_header_from_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
     ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
-    ntfy.send_items("subject", [{"url": "https://example.com/item"}], "{url}", send_separately=True)
+    ntfy.send_items(
+        "subject", [{"url": "https://example.com/item", "query": TEST_QUERY}], "{url}", send_separately=True
+    )
 
     assert ntfy_session_mock.simulated_headers[0]["Click"] == "https://example.com/item"
+
+
+def test_send_items_shows_query_header_once_per_group(
+    email_notificator: notificators.EmailNotificator, smtp_mock: SmtpMock
+) -> None:
+    """
+    'send_items' (combined, non-separate mode) should print "Query: ..." once at the start of
+    each run of same-query items, not once per item, and separate items with a blank line.
+    """
+    items = [
+        {"query": "q1", "title": "a"},
+        {"query": "q1", "title": "b"},
+        {"query": "q2", "title": "c"},
+    ]
+    email_notificator.send_items("subject", items, "{title}")
+
+    assert smtp_mock.simulated_messages[0] == (
+        b"Subject: subject\n\nQuery: q1\n\na\n\nb\n\nQuery: q2\n\nc"
+    )
+
+
+def test_send_items_separately_always_includes_its_own_header(
+    email_notificator: notificators.EmailNotificator, smtp_mock: SmtpMock
+) -> None:
+    """
+    In send_separately mode each item becomes its own standalone message with no neighboring
+    items for context, so every message must carry its own header -- even for items that share
+    the same query.
+    """
+    items = [{"query": "q1", "title": "a"}, {"query": "q1", "title": "b"}]
+    email_notificator.send_items("subject", items, "{title}", send_separately=True)
+
+    assert [m for m in smtp_mock.simulated_messages] == [
+        b"Subject: subject\n\nQuery: q1\n\na",
+        b"Subject: subject\n\nQuery: q1\n\nb",
+    ]
+
+
+def test_pushover_send_items_repeats_header_when_split_mid_query(
+    pushover_notificator: notificators.PushoverNotificator, session_mock: HttpsSessionMock
+) -> None:
+    """
+    When Pushover's 1024-char limit splits two same-query items across separate messages, the
+    second message must still carry its own "Query: ..." header even though the query didn't
+    change -- it's a standalone push notification with no visible link to the first message.
+    """
+    items = [
+        {"query": "q1", "data": "a" * 600},
+        {"query": "q1", "data": "b" * 600},
+    ]
+    pushover_notificator.send_items("subject", items, "{data}")
+
+    assert len(session_mock.simulated_messages) == 2
+    assert session_mock.simulated_messages[0] == f"Query: q1\n\n{'a' * 600}"
+    assert session_mock.simulated_messages[1] == f"Query: q1\n\n{'b' * 600}"

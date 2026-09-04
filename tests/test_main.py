@@ -29,7 +29,7 @@ def example_dummy_config_fixture(tmp_path: pathlib.Path):
                             "email_user": "dummy_email",
                             "email_password": "dummy_pass",
                             "recipients": "dummy_recipient_1,dummy_recipient_2",
-                            "message_body_format": "Query: {query}\nURL: {url}\nTitle: {title}\nPrice: {price}\n",
+                            "message_body_format": "URL: {url}\nTitle: {title}\nPrice: {price}\n",
                         }
                     },
                 }

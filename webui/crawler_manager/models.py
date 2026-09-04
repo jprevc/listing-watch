@@ -12,7 +12,7 @@ from django.db import models
 from crawler_manager import schedule_utils
 from crawler_manager.registry import available_notificator_choices, available_spider_choices
 
-DEFAULT_MESSAGE_BODY_FORMAT = "Query: {query}\nTitle: {title}\nURL: {url}\nPrice: {price}"
+DEFAULT_MESSAGE_BODY_FORMAT = "Title: {title}\nURL: {url}\nPrice: {price}"
 
 
 class Query(models.Model):

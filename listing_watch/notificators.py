@@ -48,6 +48,24 @@ class Notificator(ABC):
         :param item_format: Format, with which item's message will be created.
         """
 
+    @staticmethod
+    def _format_item(item: NotificatorItem, item_format: str, include_header: bool) -> str:
+        """
+        Renders a single item's body via `item_format`, optionally preceded by a "Query: ..."
+        header. The header isn't part of `item_format` itself (which no longer contains
+        `{query}`) since it's meant to appear once per query, not once per item -- see
+        `send_items`.
+
+        :param item: Item to render.
+        :param item_format: Format, with which the item's body will be created.
+        :param include_header: Whether to prepend a "Query: <name>" header line.
+        :return: Rendered item, ready to be joined with other items via a blank line.
+        """
+        body = item_format.format(**item).rstrip()
+        if include_header:
+            return f"Query: {item['query']}\n\n{body}"
+        return body
+
     def send_items(
         self,
         subject: str,
@@ -58,20 +76,29 @@ class Notificator(ABC):
         """
         Sends items in a form of a dictionary to recipients.
 
+        Items are expected to arrive grouped by `query` (consecutive items sharing the same
+        query stay adjacent) -- true for every current spider, which builds its item list one
+        query at a time. A "Query: <name>" header is emitted once at the start of each such
+        run rather than once per item, since all items in a run share the same query value.
+
         :param subject: Subject for message.
         :param items: List of dictionaries, containing data as key value pairs, which will be sent to recipients.
         :param item_format: Format, with which each item's message will be created.
         :param send_separately: If True, each item will be sent as separate message.
         """
-        text = ""
-        for item in items:
-            if send_separately:
+        if send_separately:
+            for item in items:
                 self._send_single_item(subject, item, item_format)
-            else:
-                text += item_format.format(**item)
+            return
 
-        if not send_separately:
-            self.send_text(subject, text)
+        blocks: list[str] = []
+        previous_query: str | None = None
+        for item in items:
+            query = item["query"]
+            blocks.append(self._format_item(item, item_format, include_header=query != previous_query))
+            previous_query = query
+
+        self.send_text(subject, "\n\n".join(blocks))
 
 
 class EmailNotificator(Notificator):
@@ -107,7 +134,7 @@ class EmailNotificator(Notificator):
         return smtplib.SMTP("smtp.gmail.com", 587)
 
     def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
-        self.send_text(subject, item_format.format(**item))
+        self.send_text(subject, self._format_item(item, item_format, include_header=True))
 
     def send_text(self, subject: str, message: str) -> None:
         """
@@ -168,7 +195,7 @@ class PushoverNotificator(Notificator):
         # if item contains 'url' field, we can send it as URL in push notification and will be presented
         # in designated place
         url = item.get("url", None)
-        message = item_format.format(**item)
+        message = self._format_item(item, item_format, include_header=True)
         self._post_message(subject, message, url=url)
 
     def _post_message(self, subject: str, message: str, url: str | None) -> None:
@@ -201,25 +228,34 @@ class PushoverNotificator(Notificator):
         if send_separately:
             # here it is assumed, that any single item's text will not exceed 1024 character limitation
             super().send_items(subject, items, item_format, send_separately=True)
-        else:
-            # pushover messages are limited to 1024 characters. Items need to be divided to separate text blocks and
-            # sent separately if text would exceed that limit
+            return
 
-            temp_message = ""
-            for item in items:
-                item_txt = item_format.format(**item)
-                if len(temp_message + item_txt) > 1024:
-                    # if message together with new item exceeds character limit, send it without new item
-                    self.send_text(subject, temp_message)
+        # pushover messages are limited to 1024 characters. Items need to be divided into
+        # separate text blocks and sent separately if text would exceed that limit. Each
+        # resulting message is its own standalone push notification, so -- like
+        # _send_single_item -- it always carries its own "Query: ..." header for the query
+        # active where it starts, even if that query was already headed in the previous
+        # (now-flushed) message.
+        temp_message = ""
+        temp_query: str | None = None
+        for item in items:
+            query = item["query"]
+            piece = self._format_item(item, item_format, include_header=not temp_message or query != temp_query)
+            candidate = f"{temp_message}\n\n{piece}" if temp_message else piece
 
-                    # current item's text will be sent in the next message
-                    temp_message = item_txt
-                else:
-                    # append current item's text to message
-                    temp_message += item_txt
+            if temp_message and len(candidate) > 1024:
+                # if message together with new item exceeds character limit, send it without new item
+                self.send_text(subject, temp_message)
 
-            # send 'leftover' text
-            self.send_text(subject, temp_message)
+                # current item's text will be sent in the next message, with its own header
+                temp_message = self._format_item(item, item_format, include_header=True)
+            else:
+                temp_message = candidate
+
+            temp_query = query
+
+        # send 'leftover' text
+        self.send_text(subject, temp_message)
 
 
 class NtfyNotificator(Notificator):
@@ -255,7 +291,7 @@ class NtfyNotificator(Notificator):
 
         # if item contains 'url' field, we can send it as a clickable action in the notification
         url = item.get("url", None)
-        message = item_format.format(**item)
+        message = self._format_item(item, item_format, include_header=True)
         self._post_message(subject, message, url=url)
 
     def _post_message(self, subject: str, message: str, url: str | None) -> None:

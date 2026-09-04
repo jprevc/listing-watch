@@ -350,7 +350,9 @@
 
         .filters-toggle { display: none; }
 
-        /* --- Mobile: collapsible filters --- */
+        /* --- Mobile: collapsible filters (opt in via .filters.collapsible -- the bare
+           .filters class is also reused for unrelated flex-row layouts, e.g. the
+           notification-row profile picker in query_form.html, which must stay visible) --- */
         @media (max-width: 767px) {
             .filters-toggle {
                 display: inline-flex;
@@ -359,7 +361,7 @@
                 margin-bottom: 0.75rem;
             }
             .filters-toggle svg { width: 1rem; height: 1rem; }
-            .filters {
+            .filters.collapsible {
                 display: none;
                 background: var(--bg-elevated);
                 border: 1px solid var(--border);
@@ -368,9 +370,9 @@
                 padding: 0.9rem;
                 margin-bottom: 1rem;
             }
-            .filters.is-open { display: flex; }
-            .filters .field { width: 100%; }
-            .filters select { max-width: none; width: 100%; }
+            .filters.collapsible.is-open { display: flex; }
+            .filters.collapsible .field { width: 100%; }
+            .filters.collapsible select { max-width: none; width: 100%; }
         }
 
         /* --- Mobile: card-transform tables (opt in via .table-cards) --- */

@@ -9,7 +9,7 @@
         </svg>
         <span x-text="open ? 'Hide filters' : 'Filters'"></span>
     </button>
-    <form method="get" class="filters" id="run-filters" :class="open ? 'is-open' : ''">
+    <form method="get" class="filters collapsible" id="run-filters" :class="open ? 'is-open' : ''">
         <div class="field">
             <label for="status">Status</label>
             <select name="status" id="status" onchange="this.form.submit()">

@@ -16,7 +16,7 @@
         </svg>
         <span x-text="open ? 'Hide filters' : 'Filters'"></span>
     </button>
-    <form method="get" class="filters" id="item-filters" :class="open ? 'is-open' : ''">
+    <form method="get" class="filters collapsible" id="item-filters" :class="open ? 'is-open' : ''">
         <div class="field">
             <label for="spider">Spider</label>
             <select name="spider" id="spider" onchange="this.form.submit()">

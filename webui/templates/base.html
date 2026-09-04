@@ -303,7 +303,7 @@
             max-width: 420px;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        input[type="checkbox"] { width: auto; }
+        input[type="checkbox"], input[type="radio"] { width: auto; }
 
         .btn {
             display: inline-block;
@@ -446,6 +446,45 @@
         }
 
         .empty { color: var(--text-muted); padding: 1.5rem; text-align: center; }
+
+        /* --- Collapsible form sections --- */
+        .form-section {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 1rem;
+        }
+        .form-section > summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1.1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            user-select: none;
+        }
+        .form-section > summary::-webkit-details-marker { display: none; }
+        .form-section > summary::after {
+            content: "";
+            width: 0.55rem;
+            height: 0.55rem;
+            border-right: 2px solid var(--text-muted);
+            border-bottom: 2px solid var(--text-muted);
+            transform: rotate(45deg);
+            transition: transform 0.15s ease;
+            flex-shrink: 0;
+        }
+        .form-section[open] > summary::after { transform: rotate(-135deg); }
+        .form-section > summary:hover { color: var(--accent); }
+        .form-section .form-section-body {
+            padding: 0.25rem 1.1rem 1.1rem;
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+        .form-section .form-section-body > p:last-child { margin-bottom: 0; }
     </style>
 </head>
 <body>

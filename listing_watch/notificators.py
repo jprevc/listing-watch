@@ -257,7 +257,11 @@ class NtfyNotificator(Notificator):
         server = cast(str, self.configuration.get("server", "https://ntfy.sh"))
         topic = cast(str, self.configuration["topic"])
 
-        headers: dict[str, str] = {"Title": subject}
+        # HTTP header values passed as `str` are encoded 'latin-1' by the underlying
+        # http.client/urllib3, which raises UnicodeEncodeError for any character outside that
+        # range (e.g. 'Ž' in a Slovenian query/item title). Encoding to UTF-8 bytes up front
+        # sidesteps that: bytes header values are sent as-is, and ntfy expects UTF-8 anyway.
+        headers: dict[str, str | bytes] = {"Title": subject.encode("utf-8")}
 
         priority = self.configuration.get("priority")
         if priority:
@@ -265,10 +269,10 @@ class NtfyNotificator(Notificator):
 
         tags = self.configuration.get("tags")
         if tags:
-            headers["Tags"] = cast(str, tags)
+            headers["Tags"] = cast(str, tags).encode("utf-8")
 
         if url:
-            headers["Click"] = url
+            headers["Click"] = url.encode("utf-8")
 
         auth = None
         token = self.configuration.get("token")

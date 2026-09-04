@@ -98,7 +98,17 @@ def test_ntfy_send_text(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None
     ntfy.send_text("test_subject", "test_message")
 
     assert ntfy_session_mock.simulated_messages[0] == "test_message"
-    assert ntfy_session_mock.simulated_headers[0]["Title"] == "test_subject"
+    assert ntfy_session_mock.simulated_headers[0]["Title"] == b"test_subject"
+
+
+def test_ntfy_send_text_with_non_latin1_subject(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
+    # Regression test: a `str` header value is encoded 'latin-1' by the underlying http.client,
+    # which raises UnicodeEncodeError for a character like 'Ž' (U+017D, outside Latin-1) -- e.g. a
+    # Slovenian query/item title. The notificator must UTF-8-encode header values itself instead.
+    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
+    ntfy.send_text("Ženske, ki tečejo z volkovi", "test_message")
+
+    assert ntfy_session_mock.simulated_headers[0]["Title"] == "Ženske, ki tečejo z volkovi".encode("utf-8")
 
 
 def test_ntfy_default_server_used_in_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
@@ -120,7 +130,7 @@ def test_ntfy_priority_and_tags_set_headers(ntfy_session_mock: NtfySessionMock, 
     ntfy.send_text("subject", "message")
 
     assert ntfy_session_mock.simulated_headers[0]["Priority"] == "high"
-    assert ntfy_session_mock.simulated_headers[0]["Tags"] == "warning,skull"
+    assert ntfy_session_mock.simulated_headers[0]["Tags"] == b"warning,skull"
 
 
 def test_ntfy_token_sets_authorization_header(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:

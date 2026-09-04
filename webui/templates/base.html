@@ -5,19 +5,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Listing Watch{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'crawler_manager/favicon.svg' %}">
     <script src="{% static 'crawler_manager/htmx.min.js' %}"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: { preflight: false },
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     <style>
         :root {
-            --bg: #f3f4f6;
+            --bg: #f8fafc;
             --bg-elevated: #ffffff;
-            --text: #111827;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
+            --bg-subtle: #f1f5f9;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
             --accent: #2563eb;
+            --accent-hover: #1d4ed8;
             --accent-contrast: #ffffff;
             --accent-muted: #eff6ff;
-            --radius: 0.6rem;
-            --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+            --radius: 0.75rem;
+            --radius-sm: 0.5rem;
+            --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.07);
+            --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08);
+            --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.35);
 
             --warning-bg: #fef3c7;
             --warning-text: #92400e;
@@ -25,21 +38,25 @@
             --success-text: #166534;
             --danger-bg: #fee2e2;
             --danger-text: #991b1b;
-            --neutral-bg: #f3f4f6;
-            --neutral-text: #6b7280;
+            --neutral-bg: #f1f5f9;
+            --neutral-text: #64748b;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #0f172a;
-                --bg-elevated: #1e293b;
-                --text: #e5e7eb;
+                --bg: #020617;
+                --bg-elevated: #0f172a;
+                --bg-subtle: #1e293b;
+                --text: #f1f5f9;
                 --text-muted: #94a3b8;
                 --border: #334155;
                 --accent: #60a5fa;
+                --accent-hover: #93c5fd;
                 --accent-contrast: #0f172a;
                 --accent-muted: #1e3a5f;
-                --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
+                --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+                --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.45);
 
                 --warning-bg: #452a06;
                 --warning-text: #fbbf24;
@@ -60,9 +77,18 @@
             color: var(--text);
             margin: 0;
             line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
         a { color: var(--accent); }
+
+        a:focus-visible, button:focus-visible, .btn:focus-visible,
+        input:focus-visible, select:focus-visible, textarea:focus-visible,
+        [tabindex]:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            border-radius: var(--radius-sm);
+        }
 
         .container {
             max-width: 1100px;
@@ -70,41 +96,85 @@
             padding: 1.5rem 1.25rem 3rem;
         }
 
+        /* --- Nav --- */
         nav.topbar {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            flex-wrap: wrap;
+            position: relative;
             background: var(--bg-elevated);
             border-bottom: 1px solid var(--border);
+        }
+
+        .topbar-inner {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
             padding: 0.9rem 1.25rem;
         }
 
         nav.topbar .brand {
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: -0.01em;
             color: var(--text);
             text-decoration: none;
             margin-right: auto;
         }
 
+        .nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 2.4rem;
+            height: 2.4rem;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .nav-toggle svg { width: 1.25rem; height: 1.25rem; }
+
         nav.topbar .links {
             display: flex;
+            align-items: center;
             gap: 1.25rem;
             flex-wrap: wrap;
         }
 
-        nav.topbar a {
+        nav.topbar a:not(.brand) {
             text-decoration: none;
             color: var(--text-muted);
             font-size: 0.92rem;
+            transition: color 0.15s ease;
         }
 
-        nav.topbar a:hover { color: var(--accent); }
+        nav.topbar a:not(.brand):hover { color: var(--accent); }
 
         nav.topbar form { margin: 0; }
 
-        h1 { font-size: 1.5rem; margin: 0 0 1.25rem; }
-        h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+        @media (max-width: 767px) {
+            .nav-toggle { display: inline-flex; }
+
+            nav.topbar .links {
+                display: none;
+                position: absolute;
+                inset: 100% 0 auto 0;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.25rem;
+                background: var(--bg-elevated);
+                border-bottom: 1px solid var(--border);
+                box-shadow: var(--shadow-lg);
+                padding: 0.75rem 1.25rem 1rem;
+                z-index: 30;
+            }
+            nav.topbar .links.is-open { display: flex; }
+            nav.topbar .links a:not(.brand) { padding: 0.55rem 0.25rem; font-size: 1rem; }
+            nav.topbar .links form { padding-top: 0.25rem; }
+            nav.topbar .links .btn { width: 100%; text-align: center; }
+        }
+
+        h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 1.25rem; }
+        h2 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.75rem; }
 
         .card {
             background: var(--bg-elevated);
@@ -126,7 +196,7 @@
         th, td { text-align: left; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
         th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
         tbody tr:last-child td { border-bottom: none; }
-        tbody tr:hover { background: var(--bg); }
+        tbody tr:hover { background: var(--bg-subtle); }
         td.wrap { white-space: normal; }
 
         .badge {
@@ -157,14 +227,56 @@
         .htmx-indicator { display: none; }
         .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-block; }
 
-        .messages { list-style: none; padding: 0; margin: 0 0 1.25rem; }
-        .messages li {
-            padding: 0.6rem 0.9rem;
-            margin-bottom: 0.5rem;
-            background: var(--success-bg);
-            color: var(--success-text);
-            border-radius: var(--radius);
+        /* --- Toasts --- */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            left: 1rem;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+            pointer-events: none;
         }
+        @media (min-width: 640px) {
+            .toast-container { left: auto; width: 22rem; }
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            width: 100%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--neutral-text);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            padding: 0.75rem 0.9rem;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+        .toast-success { border-left-color: var(--success-text); }
+        .toast-error { border-left-color: var(--danger-text); }
+        .toast-warning { border-left-color: var(--warning-text); }
+        .toast-info, .toast-debug { border-left-color: var(--accent); }
+        .toast span { flex: 1; }
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0;
+        }
+        .toast-close:hover { color: var(--text); }
+        .toast-enter { transition: opacity 0.2s ease, transform 0.2s ease; }
+        .toast-enter-start { opacity: 0; transform: translateY(-0.5rem); }
+        .toast-leave { transition: opacity 0.15s ease, transform 0.15s ease; }
+        .toast-leave-end { opacity: 0; transform: translateY(-0.5rem); }
 
         form p { margin: 0 0 0.9rem; }
         label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-muted); }
@@ -189,6 +301,7 @@
             padding: 0.45rem 0.6rem;
             width: 100%;
             max-width: 420px;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
         input[type="checkbox"] { width: auto; }
 
@@ -202,10 +315,11 @@
             color: var(--text);
             cursor: pointer;
             text-decoration: none;
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
         }
         .btn:hover { border-color: var(--accent); color: var(--accent); }
         .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
-        .btn-primary:hover { opacity: 0.9; color: var(--accent-contrast); }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); opacity: 1; color: var(--accent-contrast); }
         .btn-danger { color: var(--danger-text); }
         .btn-danger:hover { border-color: var(--danger-text); }
         .btn-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -264,29 +378,52 @@
 </head>
 <body>
     {% block nav %}
-    <nav class="topbar">
-        <a class="brand" href="{% url 'query_list' %}">Listing Watch</a>
-        {% if user.is_authenticated %}
-        <div class="links">
-            <a href="{% url 'query_list' %}">Queries</a>
-            <a href="{% url 'profile_list' %}">Notification profiles</a>
-            <a href="{% url 'found_item_list' %}">Found items</a>
-            <a href="{% url 'run_history_list' %}">Run history</a>
-            <a href="/admin/">Django admin</a>
+    <nav class="topbar" x-data="{ open: false }" @keydown.escape.window="open = false">
+        <div class="topbar-inner">
+            <a class="brand" href="{% url 'query_list' %}">Listing Watch</a>
+            {% if user.is_authenticated %}
+            <button type="button" class="nav-toggle" @click="open = !open" @click.outside="open = false"
+                    :aria-expanded="open.toString()" aria-controls="nav-links" aria-label="Toggle navigation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="links" id="nav-links" :class="open ? 'is-open' : ''">
+                <a href="{% url 'query_list' %}">Queries</a>
+                <a href="{% url 'profile_list' %}">Notification profiles</a>
+                <a href="{% url 'found_item_list' %}">Found items</a>
+                <a href="{% url 'run_history_list' %}">Run history</a>
+                <a href="/admin/">Django admin</a>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="btn" type="submit">Log out</button>
+                </form>
+            </div>
+            {% endif %}
         </div>
-        <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="btn" type="submit">Log out</button>
-        </form>
-        {% endif %}
     </nav>
     {% endblock %}
+    {% if messages %}
+    <div class="toast-container" aria-live="polite">
+        {% for message in messages %}
+        <div
+            x-data="{ show: true }"
+            x-show="show"
+            x-init="setTimeout(() => show = false, 5000)"
+            x-transition:enter="toast-enter" x-transition:enter-start="toast-enter-start"
+            x-transition:leave="toast-leave" x-transition:leave-end="toast-leave-end"
+            class="toast toast-{{ message.tags|default:'info' }}"
+            role="status"
+        >
+            <span>{{ message }}</span>
+            <button type="button" class="toast-close" @click="show = false" aria-label="Dismiss">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     <div class="container">
-        {% if messages %}
-        <ul class="messages">
-            {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-        </ul>
-        {% endif %}
         {% block content %}{% endblock %}
     </div>
 </body>

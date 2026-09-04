@@ -3,28 +3,10 @@ Contains tests for Notificator classes.
 """
 from __future__ import annotations
 
-from itertools import product
-
 import pytest
 
 from listing_watch import notificators
 from tests.mocks import HttpsSessionMock, NtfySessionMock, SmtpMock
-
-
-def get_test_messages_combinations() -> list[tuple[str, int, int, int]]:
-    num_test_messages = [1, 5, 10, 100]
-    test_message_characters = [600, 300, 200]
-    num_test_users = [1, 2, 3, 4]
-
-    # create different test combinations for parameterization
-    test_combs = list(product(num_test_messages, test_message_characters, num_test_users))
-
-    comb_names = [
-        f"{num_messages}_messages_{num_chars}_chars_{num_users}_users"
-        for (num_messages, num_chars, num_users) in test_combs
-    ]
-
-    return [(comb_name, *test_comb) for comb_name, test_comb in zip(comb_names, test_combs)]  # noqa
 
 
 @pytest.fixture(name="session_mock")
@@ -52,94 +34,6 @@ def test_send_text(
     """
     pushover_notificator.send_text("test_subject", "test_message")
     assert session_mock.simulated_messages[0] == "test_message"
-
-
-@pytest.mark.parametrize("_,num_test_items,text_length,num_users", get_test_messages_combinations())
-def test_minimal_number_of_sent_messages_when_divided(
-    pushover_notificator: notificators.PushoverNotificator,
-    session_mock: HttpsSessionMock,
-    _,
-    num_test_items: int,
-    text_length: int,
-    num_users: int,
-):
-    """
-    Test that 'send_items' method correctly divides items if length of message exceeds 1024 characters.
-    """
-    _send_test_items(pushover_notificator, num_test_items, text_length, num_users, send_separately=True)
-
-    # minimal needed number of messages would occur if length of messages is perfectly divisible by 1024
-    min_number_of_messages = (((text_length * num_test_items) // 1025) + 1) * num_users
-
-    assert min_number_of_messages <= len(session_mock.simulated_messages)
-
-
-@pytest.mark.parametrize("_,num_test_items,text_length,num_users", get_test_messages_combinations())
-def test_length_of_message_must_be_less_than_1024(
-    pushover_notificator: notificators.PushoverNotificator,
-    session_mock: HttpsSessionMock,
-    _,
-    num_test_items: int,
-    text_length: int,
-    num_users: int,
-):
-    """
-    Test that 'send_items' method never sends a message where length exceeds char limit of 1024.
-    """
-    _send_test_items(pushover_notificator, num_test_items, text_length, num_users, send_separately=True)
-
-    # check that length of each message does not exceed 1024
-    for message in session_mock.simulated_messages:
-        assert len(message) <= 1024
-
-
-@pytest.mark.parametrize("_,num_test_items,text_length,num_users", get_test_messages_combinations())
-def test_length_of_divided_messages_is_equal_to_original(
-    pushover_notificator: notificators.PushoverNotificator,
-    session_mock: HttpsSessionMock,
-    _,
-    num_test_items: int,
-    text_length: int,
-    num_users: int,
-):
-    """
-    Test that total length of divided items in 'send_items' method is equal to original message,
-    plus the "Query: ..." header each standalone (send_separately) message carries.
-    """
-    _send_test_items(pushover_notificator, num_test_items, text_length, num_users, send_separately=True)
-
-    # check that sum of all messages lengths is equal to original text length plus one header per message
-    header_length = len(f"Query: {TEST_QUERY}\n\n")
-    messages_length_sum = sum(len(message) for message in session_mock.simulated_messages)
-    original_txt_length = (text_length + header_length) * num_test_items * num_users
-    assert original_txt_length == messages_length_sum
-
-
-@pytest.mark.parametrize("_,num_test_items,text_length,num_users", get_test_messages_combinations())
-def test_send_items_separate_correctly_separates_items(
-    pushover_notificator: notificators.PushoverNotificator,
-    session_mock: HttpsSessionMock,
-    _,
-    num_test_items: int,
-    text_length: int,
-    num_users: int,
-):
-    """
-    Test that 'send_items' method correctly sends each item separately if that is specified.
-    """
-    _send_test_items(pushover_notificator, num_test_items, text_length, num_users, send_separately=True)
-
-    assert num_test_items * num_users == len(session_mock.simulated_messages)
-
-
-TEST_QUERY = "q"
-
-
-def _send_test_items(pushover, num_test_items, text_length, num_users, send_separately):
-    items = [{"data": "a" * text_length, "query": TEST_QUERY}] * num_test_items
-    pushover.configuration["recipients"] = ",".join(["user_key"] * num_users)
-
-    pushover.send_items("Test subject", items, "{data}", send_separately=send_separately)
 
 
 @pytest.mark.parametrize(
@@ -245,15 +139,6 @@ def test_ntfy_username_password_sets_basic_auth(ntfy_session_mock: NtfySessionMo
     assert "Authorization" not in ntfy_session_mock.simulated_headers[0]
 
 
-def test_ntfy_send_single_item_sets_click_header_from_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:
-    ntfy = _make_ntfy_notificator(ntfy_session_mock, monkeypatch)
-    ntfy.send_items(
-        "subject", [{"url": "https://example.com/item", "query": TEST_QUERY}], "{url}", send_separately=True
-    )
-
-    assert ntfy_session_mock.simulated_headers[0]["Click"] == "https://example.com/item"
-
-
 def test_send_items_shows_query_header_once_per_group(
     email_notificator: notificators.EmailNotificator, smtp_mock: SmtpMock
 ) -> None:
@@ -271,23 +156,6 @@ def test_send_items_shows_query_header_once_per_group(
     assert smtp_mock.simulated_messages[0] == (
         b"Subject: subject\n\nQuery: q1\n\na\n\nb\n\nQuery: q2\n\nc"
     )
-
-
-def test_send_items_separately_always_includes_its_own_header(
-    email_notificator: notificators.EmailNotificator, smtp_mock: SmtpMock
-) -> None:
-    """
-    In send_separately mode each item becomes its own standalone message with no neighboring
-    items for context, so every message must carry its own header -- even for items that share
-    the same query.
-    """
-    items = [{"query": "q1", "title": "a"}, {"query": "q1", "title": "b"}]
-    email_notificator.send_items("subject", items, "{title}", send_separately=True)
-
-    assert [m for m in smtp_mock.simulated_messages] == [
-        b"Subject: subject\n\nQuery: q1\n\na",
-        b"Subject: subject\n\nQuery: q1\n\nb",
-    ]
 
 
 def test_pushover_send_items_repeats_header_when_split_mid_query(

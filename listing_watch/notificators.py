@@ -38,16 +38,6 @@ class Notificator(ABC):
         :param message: Message content.
         """
 
-    @abstractmethod
-    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
-        """
-        Sends single item as a message.
-
-        :param subject: Subject (title) of notification.
-        :param item: Item as a dictionary, containing data as key value pairs, which will be sent to recipients.
-        :param item_format: Format, with which item's message will be created.
-        """
-
     @staticmethod
     def _format_item(item: NotificatorItem, item_format: str, include_header: bool) -> str:
         """
@@ -71,7 +61,6 @@ class Notificator(ABC):
         subject: str,
         items: list[NotificatorItem],
         item_format: str,
-        send_separately: bool = False,
     ) -> None:
         """
         Sends items in a form of a dictionary to recipients.
@@ -84,13 +73,7 @@ class Notificator(ABC):
         :param subject: Subject for message.
         :param items: List of dictionaries, containing data as key value pairs, which will be sent to recipients.
         :param item_format: Format, with which each item's message will be created.
-        :param send_separately: If True, each item will be sent as separate message.
         """
-        if send_separately:
-            for item in items:
-                self._send_single_item(subject, item, item_format)
-            return
-
         blocks: list[str] = []
         previous_query: str | None = None
         for item in items:
@@ -132,9 +115,6 @@ class EmailNotificator(Notificator):
         :return: Gmail SMTP session handle.
         """
         return smtplib.SMTP("smtp.gmail.com", 587)
-
-    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
-        self.send_text(subject, self._format_item(item, item_format, include_header=True))
 
     def send_text(self, subject: str, message: str) -> None:
         """
@@ -190,14 +170,6 @@ class PushoverNotificator(Notificator):
         """
         self._post_message(subject, message, url=None)
 
-    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
-
-        # if item contains 'url' field, we can send it as URL in push notification and will be presented
-        # in designated place
-        url = item.get("url", None)
-        message = self._format_item(item, item_format, include_header=True)
-        self._post_message(subject, message, url=url)
-
     def _post_message(self, subject: str, message: str, url: str | None) -> None:
         session = self._open_session()
         recipients = cast(str, self.configuration["recipients"]).split(",")
@@ -223,19 +195,12 @@ class PushoverNotificator(Notificator):
         subject: str,
         items: list[NotificatorItem],
         item_format: str,
-        send_separately: bool = False,
     ) -> None:
-        if send_separately:
-            # here it is assumed, that any single item's text will not exceed 1024 character limitation
-            super().send_items(subject, items, item_format, send_separately=True)
-            return
-
         # pushover messages are limited to 1024 characters. Items need to be divided into
         # separate text blocks and sent separately if text would exceed that limit. Each
-        # resulting message is its own standalone push notification, so -- like
-        # _send_single_item -- it always carries its own "Query: ..." header for the query
-        # active where it starts, even if that query was already headed in the previous
-        # (now-flushed) message.
+        # resulting message is its own standalone push notification, so it always carries its
+        # own "Query: ..." header for the query active where it starts, even if that query was
+        # already headed in the previous (now-flushed) message.
         temp_message = ""
         temp_query: str | None = None
         for item in items:
@@ -286,13 +251,6 @@ class NtfyNotificator(Notificator):
         :param message: Push notification message.
         """
         self._post_message(subject, message, url=None)
-
-    def _send_single_item(self, subject: str, item: NotificatorItem, item_format: str) -> None:
-
-        # if item contains 'url' field, we can send it as a clickable action in the notification
-        url = item.get("url", None)
-        message = self._format_item(item, item_format, include_header=True)
-        self._post_message(subject, message, url=url)
 
     def _post_message(self, subject: str, message: str, url: str | None) -> None:
         session = self._open_session()

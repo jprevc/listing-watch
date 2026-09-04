@@ -2,29 +2,37 @@
 {% block title %}Run history{% endblock %}
 {% block content %}
 <h1>Run history</h1>
-<form method="get" class="filters">
-    <div class="field">
-        <label for="status">Status</label>
-        <select name="status" id="status" onchange="this.form.submit()">
-            <option value="">All statuses</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="field">
-        <label for="query">Query</label>
-        <select name="query" id="query" onchange="this.form.submit()">
-            <option value="">All queries</option>
-            {% for name in query_names %}
-            <option value="{{ name }}" {% if name == selected_query %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <noscript><button class="btn" type="submit">Filter</button></noscript>
-</form>
+<div x-data="{ open: {% if selected_status or selected_query %}true{% else %}false{% endif %} }">
+    <button type="button" class="btn filters-toggle" @click="open = !open" :aria-expanded="open.toString()" aria-controls="run-filters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="4 4 20 4 14 12 14 19 10 21 10 12 4 4"></polygon>
+        </svg>
+        <span x-text="open ? 'Hide filters' : 'Filters'"></span>
+    </button>
+    <form method="get" class="filters" id="run-filters" :class="open ? 'is-open' : ''">
+        <div class="field">
+            <label for="status">Status</label>
+            <select name="status" id="status" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="query">Query</label>
+            <select name="query" id="query" onchange="this.form.submit()">
+                <option value="">All queries</option>
+                {% for name in query_names %}
+                <option value="{{ name }}" {% if name == selected_query %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <noscript><button class="btn" type="submit">Filter</button></noscript>
+    </form>
+</div>
 
-<div class="table-wrap">
+<div class="table-wrap table-cards">
 <table>
     <thead>
         <tr>
@@ -42,19 +50,19 @@
     <tbody>
         {% for run in page_obj %}
         <tr>
-            <td>{{ run.query_name }}</td>
-            {% if request.user.is_staff %}<td>{{ run.user|default:"—" }}</td>{% endif %}
-            <td>{{ run.spider_name }}</td>
-            <td>{{ run.get_trigger_display }}</td>
-            <td><span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span></td>
-            <td>{{ run.started_at|default:"—" }}</td>
-            <td>{{ run.finished_at|default:"—" }}</td>
-            <td>
+            <td class="cell-primary">{{ run.query_name }}</td>
+            {% if request.user.is_staff %}<td data-label="Owner">{{ run.user|default:"—" }}</td>{% endif %}
+            <td data-label="Spider">{{ run.spider_name }}</td>
+            <td data-label="Trigger">{{ run.get_trigger_display }}</td>
+            <td data-label="Status"><span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span></td>
+            <td data-label="Started">{{ run.started_at|default:"—" }}</td>
+            <td data-label="Finished">{{ run.finished_at|default:"—" }}</td>
+            <td data-label="Found">
                 {% if run.items_found_count %}
                 <a href="{% url 'found_item_list' %}?run={{ run.pk }}&run_kind=found">{{ run.items_found_count }}</a>
                 {% else %}{{ run.items_found_count }}{% endif %}
             </td>
-            <td>
+            <td data-label="New">
                 {% if run.new_items_count %}
                 <a href="{% url 'found_item_list' %}?run={{ run.pk }}&run_kind=new">{{ run.new_items_count }}</a>
                 {% else %}{{ run.new_items_count }}{% endif %}

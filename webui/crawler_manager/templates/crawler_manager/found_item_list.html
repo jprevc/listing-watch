@@ -9,29 +9,37 @@
     (<a href="{% url 'run_history_list' %}">back to run history</a>)
 </p>
 {% endif %}
-<form method="get" class="filters">
-    <div class="field">
-        <label for="spider">Spider</label>
-        <select name="spider" id="spider" onchange="this.form.submit()">
-            <option value="">All spiders</option>
-            {% for value, label in spider_choices %}
-            <option value="{{ value }}" {% if value == selected_spider %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="field">
-        <label for="query">Query</label>
-        <select name="query" id="query" onchange="this.form.submit()">
-            <option value="">All queries</option>
-            {% for name in query_names %}
-            <option value="{{ name }}" {% if name == selected_query %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <noscript><button class="btn" type="submit">Filter</button></noscript>
-</form>
+<div x-data="{ open: {% if selected_spider or selected_query %}true{% else %}false{% endif %} }">
+    <button type="button" class="btn filters-toggle" @click="open = !open" :aria-expanded="open.toString()" aria-controls="item-filters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="4 4 20 4 14 12 14 19 10 21 10 12 4 4"></polygon>
+        </svg>
+        <span x-text="open ? 'Hide filters' : 'Filters'"></span>
+    </button>
+    <form method="get" class="filters" id="item-filters" :class="open ? 'is-open' : ''">
+        <div class="field">
+            <label for="spider">Spider</label>
+            <select name="spider" id="spider" onchange="this.form.submit()">
+                <option value="">All spiders</option>
+                {% for value, label in spider_choices %}
+                <option value="{{ value }}" {% if value == selected_spider %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="query">Query</label>
+            <select name="query" id="query" onchange="this.form.submit()">
+                <option value="">All queries</option>
+                {% for name in query_names %}
+                <option value="{{ name }}" {% if name == selected_query %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <noscript><button class="btn" type="submit">Filter</button></noscript>
+    </form>
+</div>
 
-<div class="table-wrap">
+<div class="table-wrap table-cards">
 <table>
     <thead>
         <tr>
@@ -47,15 +55,15 @@
     <tbody>
         {% for item in page_obj %}
         <tr>
-            <td class="wrap">
+            <td class="wrap cell-primary">
                 {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title|default:item.url|truncatechars:80 }}</a>
                 {% else %}{{ item.title|default:"(untitled)" }}{% endif %}
             </td>
-            <td>{{ item.price|default:"—" }}</td>
-            <td>{{ item.spider_name }}</td>
-            <td>{{ item.query_name }}</td>
-            {% if request.user.is_staff %}<td>{{ item.user|default:"—" }}</td>{% endif %}
-            <td>{{ item.first_seen_at }}</td>
+            <td data-label="Price">{{ item.price|default:"—" }}</td>
+            <td data-label="Spider">{{ item.spider_name }}</td>
+            <td data-label="Query">{{ item.query_name }}</td>
+            {% if request.user.is_staff %}<td data-label="Owner">{{ item.user|default:"—" }}</td>{% endif %}
+            <td data-label="First seen">{{ item.first_seen_at }}</td>
             <td>
                 <button type="button" class="btn payload-toggle" aria-expanded="false">View details</button>
             </td>

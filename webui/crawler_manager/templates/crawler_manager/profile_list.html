@@ -21,14 +21,21 @@
             <td>
                 <div class="btn-row btn-row-nowrap" x-data="{ confirmDelete: false }">
                     <a class="btn" href="{% url 'profile_edit' profile.pk %}">Edit</a>
-                    <button type="button" class="btn btn-danger" @click="confirmDelete = true">Delete</button>
+                    <button type="button" class="btn btn-danger" x-ref="deleteTrigger" @click="confirmDelete = true">Delete</button>
                     <form method="post" action="{% url 'profile_delete' profile.pk %}" x-ref="deleteForm">{% csrf_token %}</form>
-                    <div x-cloak x-show="confirmDelete" x-transition.opacity class="confirm-overlay" @keydown.escape.window="confirmDelete = false">
-                        <div class="confirm-dialog" @click.outside="confirmDelete = false">
-                            <p>Delete notification profile <strong>{{ profile.name }}</strong>? This cannot be undone.</p>
+                    <div x-cloak x-show="confirmDelete" x-transition.opacity class="confirm-overlay"
+                         @keydown.escape.window="if (confirmDelete) { confirmDelete = false; $refs.deleteTrigger.focus() }"
+                         x-effect="if (confirmDelete) $nextTick(() => $refs.cancelBtn.focus())">
+                        <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-profile-title-{{ profile.pk }}"
+                             @click.outside="if (confirmDelete) { confirmDelete = false; $refs.deleteTrigger.focus() }">
+                            <p id="delete-profile-title-{{ profile.pk }}">Delete notification profile <strong>{{ profile.name }}</strong>? This cannot be undone.</p>
                             <div class="btn-row">
-                                <button type="button" class="btn" @click="confirmDelete = false">Cancel</button>
-                                <button type="button" class="btn btn-danger" @click="$refs.deleteForm.requestSubmit()">Delete</button>
+                                <button type="button" class="btn" x-ref="cancelBtn"
+                                        @click="confirmDelete = false; $refs.deleteTrigger.focus()"
+                                        @keydown.shift.tab.prevent="$refs.deleteBtn.focus()">Cancel</button>
+                                <button type="button" class="btn btn-danger" x-ref="deleteBtn"
+                                        @click="$refs.deleteForm.requestSubmit()"
+                                        @keydown.tab.prevent="$refs.cancelBtn.focus()">Delete</button>
                             </div>
                         </div>
                     </div>

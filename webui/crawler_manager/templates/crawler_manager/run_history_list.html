@@ -50,7 +50,7 @@
     <tbody>
         {% for run in page_obj %}
         <tr>
-            <td class="cell-primary">{{ run.query_name }}</td>
+            <td class="cell-primary" title="{{ run.query_name }}">{{ run.query_name }}</td>
             {% if request.user.is_staff %}<td data-label="Owner">{{ run.user|default:"—" }}</td>{% endif %}
             <td data-label="Spider">{{ run.spider_name }}</td>
             <td data-label="Trigger">{{ run.get_trigger_display }}</td>

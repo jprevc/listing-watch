@@ -49,6 +49,7 @@
             --danger-text: #93392a;
             --neutral-bg: #e9e1cd;
             --neutral-text: #6d6250;
+            --scroll-shadow: rgba(36, 31, 21, 0.18);
 
             --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
             --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -77,6 +78,7 @@
                 --success-bg: #16301f; --success-text: #71cf8c;
                 --danger-bg: #3a1a18; --danger-text: #ef7b6f;
                 --neutral-bg: #1c2431; --neutral-text: #8b93a3;
+                --scroll-shadow: rgba(0, 0, 0, 0.5);
             }
         }
 
@@ -275,10 +277,22 @@
 
         .table-wrap {
             overflow-x: auto;
-            background: var(--bg-elevated);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
+            /* Scroll-shadow affordance: a soft edge fades in wherever there's more table to
+               scroll to, and disappears at either end -- the "local" layers scroll with the
+               content and cover the "scroll" shadow layers until content is actually cut off. */
+            background-color: var(--bg-elevated);
+            background-image:
+                linear-gradient(to right, var(--bg-elevated) 30%, transparent),
+                linear-gradient(to left, var(--bg-elevated) 30%, transparent),
+                linear-gradient(to right, var(--scroll-shadow), transparent 14px),
+                linear-gradient(to left, var(--scroll-shadow), transparent 14px);
+            background-repeat: no-repeat;
+            background-position: left center, right center, left center, right center;
+            background-size: 28px 100%, 28px 100%, 14px 100%, 14px 100%;
+            background-attachment: local, local, scroll, scroll;
         }
 
         table { border-collapse: collapse; width: 100%; min-width: 640px; }
@@ -287,6 +301,34 @@
         tbody tr:last-child td { border-bottom: none; }
         tbody tr:hover { background: var(--bg-subtle); }
         td.wrap { white-space: normal; }
+
+        /* Pinned identity/action columns: whichever columns don't fit inside the table-wrap
+           stay reachable by scrolling, but the row's own name and its action buttons never
+           scroll out of view -- you always know which row you're looking at and can always act
+           on it without hunting sideways for the controls. */
+        table thead th:first-child,
+        table tbody td.cell-primary {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background: var(--bg-elevated);
+            border-right: 1px solid var(--border);
+        }
+        table tbody td.cell-primary:not(.wrap) {
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        table thead th.col-actions,
+        table tbody td.col-actions {
+            position: sticky;
+            right: 0;
+            z-index: 1;
+            background: var(--bg-elevated);
+            border-left: 1px solid var(--border);
+        }
+        tbody tr:hover td.cell-primary,
+        tbody tr:hover td.col-actions { background: var(--bg-subtle); }
 
         /* Data readouts (numbers, timestamps, schedules, counts) set in the mono face -- the
            instrument-reading register -- distinct from names/titles/labels in the display face. */
@@ -491,6 +533,16 @@
             .table-cards table { min-width: 0; width: 100%; }
             .table-cards thead { display: none; }
             .table-cards tbody { display: block; }
+            /* No horizontal scroll exists in card mode, so pinning would just leave a stray
+               border/background on whichever cell happened to hold it. */
+            .table-cards td.cell-primary,
+            .table-cards td.col-actions {
+                position: static;
+                max-width: none;
+                border-right: none;
+                border-left: none;
+                background: transparent;
+            }
             .table-cards tr {
                 display: block;
                 background: var(--bg-elevated);

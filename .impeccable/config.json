@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "space grotesk",
+        "createdAt": "2026-09-08T07:29:46.927Z",
+        "reason": "Pre-existing incumbent choice: Space Grotesk was already committed to in base.html's own design comment (paper-ledger/ink-and-brass identity) before this polish pass; changing brand typography is a redesign decision, not polish scope."
+      }
+    ]
+  }
+}

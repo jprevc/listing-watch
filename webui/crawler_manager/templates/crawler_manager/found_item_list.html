@@ -49,7 +49,7 @@
             <th>Query</th>
             {% if request.user.is_staff %}<th>Owner</th>{% endif %}
             <th>First seen</th>
-            <th></th>
+            <th class="col-actions"></th>
         </tr>
     </thead>
     <tbody>
@@ -64,7 +64,7 @@
             <td data-label="Query">{{ item.query_name }}</td>
             {% if request.user.is_staff %}<td data-label="Owner">{{ item.user|default:"—" }}</td>{% endif %}
             <td data-label="First seen">{{ item.first_seen_at }}</td>
-            <td>
+            <td class="col-actions">
                 <button type="button" class="btn payload-toggle" aria-expanded="false">View details</button>
             </td>
         </tr>

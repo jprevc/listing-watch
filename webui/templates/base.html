@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Listing Watch{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'crawler_manager/favicon.svg' %}">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
     <script src="{% static 'crawler_manager/htmx.min.js' %}"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -15,57 +17,66 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
     <style>
+        /* Color story: a paper ledger by day, an ink-and-brass watch console by night -- both
+           read as the same instrument, since this app's one job is watching classifieds listings
+           continuously and logging what it finds. --accent (brass/amber) marks a match; --live
+           (teal) is reserved for "currently scanning" and nothing else. */
         :root {
-            --bg: #f8fafc;
-            --bg-elevated: #ffffff;
-            --bg-subtle: #f1f5f9;
-            --text: #0f172a;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
-            --accent-contrast: #ffffff;
-            --accent-muted: #eff6ff;
-            --radius: 0.75rem;
-            --radius-sm: 0.5rem;
-            --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.07);
-            --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08);
-            --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.35);
+            --bg: #f1ece0;
+            --bg-elevated: #faf7ef;
+            --bg-subtle: #e9e1cd;
+            --bg-inset: #e6ddc7;
+            --text: #241f15;
+            --text-muted: #6d6250;
+            --border: #d9cdb0;
+            --border-strong: #c3b28a;
+            --accent: #8f5619;
+            --accent-hover: #6e4012;
+            --accent-contrast: #fbf3e1;
+            --accent-muted: #ecdcb9;
+            --live: #2c7d70;
+            --radius: 0.55rem;
+            --radius-sm: 0.4rem;
+            --shadow: 0 1px 2px rgba(36, 31, 21, 0.07), 0 5px 16px rgba(36, 31, 21, 0.06);
+            --shadow-lg: 0 10px 28px rgba(36, 31, 21, 0.16), 0 2px 8px rgba(36, 31, 21, 0.1);
+            --focus-ring: 0 0 0 3px rgba(143, 86, 25, 0.32);
 
-            --warning-bg: #fef3c7;
-            --warning-text: #92400e;
-            --success-bg: #dcfce7;
-            --success-text: #166534;
-            --danger-bg: #fee2e2;
-            --danger-text: #991b1b;
-            --neutral-bg: #f1f5f9;
-            --neutral-text: #64748b;
+            --warning-bg: #f2e0b4;
+            --warning-text: #7c4b13;
+            --success-bg: #dbe7cd;
+            --success-text: #35602a;
+            --danger-bg: #f2d9cd;
+            --danger-text: #93392a;
+            --neutral-bg: #e9e1cd;
+            --neutral-text: #6d6250;
+
+            --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #020617;
-                --bg-elevated: #0f172a;
-                --bg-subtle: #1e293b;
-                --text: #f1f5f9;
-                --text-muted: #94a3b8;
-                --border: #334155;
-                --accent: #60a5fa;
-                --accent-hover: #93c5fd;
-                --accent-contrast: #0f172a;
-                --accent-muted: #1e3a5f;
-                --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
-                --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
-                --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.45);
+                --bg: #10141b;
+                --bg-elevated: #161c26;
+                --bg-subtle: #1c2431;
+                --bg-inset: #0c1017;
+                --text: #ece7da;
+                --text-muted: #8b93a3;
+                --border: #2b3345;
+                --border-strong: #3c4459;
+                --accent: #dd9c40;
+                --accent-hover: #ecb15c;
+                --accent-contrast: #1c1408;
+                --accent-muted: #2c2415;
+                --live: #57bcae;
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.35);
+                --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
+                --focus-ring: 0 0 0 3px rgba(221, 156, 64, 0.4);
 
-                --warning-bg: #452a06;
-                --warning-text: #fbbf24;
-                --success-bg: #052e18;
-                --success-text: #4ade80;
-                --danger-bg: #450a0a;
-                --danger-text: #f87171;
-                --neutral-bg: #1e293b;
-                --neutral-text: #94a3b8;
+                --warning-bg: #3a2c12; --warning-text: #e0a24b;
+                --success-bg: #16301f; --success-text: #71cf8c;
+                --danger-bg: #3a1a18; --danger-text: #ef7b6f;
+                --neutral-bg: #1c2431; --neutral-text: #8b93a3;
             }
         }
 
@@ -73,7 +84,7 @@
         [x-cloak] { display: none !important; }
 
         body {
-            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-family: var(--font-display);
             background: var(--bg);
             color: var(--text);
             margin: 0;
@@ -112,12 +123,17 @@
         }
 
         nav.topbar .brand {
-            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-weight: 600;
+            font-size: 1.05rem;
             letter-spacing: -0.01em;
             color: var(--text);
             text-decoration: none;
             margin-right: auto;
         }
+        nav.topbar .brand svg { flex-shrink: 0; color: var(--accent); }
 
         .nav-toggle {
             display: none;
@@ -149,6 +165,14 @@
         }
 
         nav.topbar a:not(.brand):hover { color: var(--accent); }
+        nav.topbar a:not(.brand) {
+            border-bottom: 2px solid transparent;
+            padding-bottom: 0.2rem;
+        }
+        nav.topbar a:not(.brand)[aria-current="page"] {
+            color: var(--text);
+            border-bottom-color: var(--accent);
+        }
 
         nav.topbar form { margin: 0; }
 
@@ -174,8 +198,8 @@
             nav.topbar .links .btn { width: 100%; text-align: center; }
         }
 
-        h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 1.25rem; }
-        h2 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.75rem; }
+        h1 { font-size: 1.65rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 1.25rem; }
+        h2 { font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 0.75rem; }
 
         .card {
             background: var(--bg-elevated);
@@ -183,6 +207,70 @@
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             padding: 1.25rem;
+        }
+
+        /* --- Hero status strip (query_list only): the console's instrument readout -- how many
+           watches are active, what they've turned up today, and whether one is scanning right
+           now. The one animated element on the page lives here (the live dot), nowhere else. */
+        .status-strip {
+            display: flex;
+            flex-wrap: wrap;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+        .status-reading {
+            flex: 1 1 10rem;
+            padding: 0.9rem 1.25rem;
+            border-left: 1px solid var(--border);
+        }
+        .status-reading:first-child { border-left: none; }
+        .status-reading .reading-label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 0.3rem;
+        }
+        .status-reading .reading-value {
+            font-family: var(--font-mono);
+            font-size: 1.6rem;
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: -0.01em;
+        }
+        .status-reading .reading-value small {
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-left: 0.35rem;
+        }
+        .status-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .status-dot.is-live {
+            background: var(--live);
+            box-shadow: 0 0 0 0 rgba(87, 188, 174, 0.55);
+            animation: status-pulse 2s ease-out infinite;
+        }
+        @keyframes status-pulse {
+            70% { box-shadow: 0 0 0 7px rgba(87, 188, 174, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(87, 188, 174, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .status-dot.is-live { animation: none; }
+        }
+        @media (max-width: 767px) {
+            .status-reading { border-left: none; border-top: 1px solid var(--border); }
+            .status-reading:first-child { border-top: none; }
         }
 
         .table-wrap {
@@ -195,17 +283,37 @@
 
         table { border-collapse: collapse; width: 100%; min-width: 640px; }
         th, td { text-align: left; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+        th { font-size: 0.78rem; font-weight: 500; color: var(--text-muted); }
         tbody tr:last-child td { border-bottom: none; }
         tbody tr:hover { background: var(--bg-subtle); }
         td.wrap { white-space: normal; }
 
+        /* Data readouts (numbers, timestamps, schedules, counts) set in the mono face -- the
+           instrument-reading register -- distinct from names/titles/labels in the display face. */
+        td[data-label="Price"], td[data-label="Schedule"], td[data-label="Last run"],
+        td[data-label="Started"], td[data-label="Finished"], td[data-label="First seen"],
+        td[data-label="Found"], td[data-label="New"], .mono {
+            font-family: var(--font-mono);
+            font-size: 0.86em;
+        }
+
         .badge {
-            display: inline-block;
-            padding: 0.2rem 0.6rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.15rem 0.55rem;
+            border-radius: 0.25rem;
+            border: 1px solid transparent;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+        }
+        .badge::before {
+            content: "";
+            width: 0.4rem;
+            height: 0.4rem;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
         }
         .badge-pending, .badge-running { background: var(--warning-bg); color: var(--warning-text); }
         .badge-success { background: var(--success-bg); color: var(--success-text); }
@@ -296,7 +404,7 @@
         input, select, textarea {
             font: inherit;
             color: var(--text);
-            background: var(--bg-elevated);
+            background: var(--bg-inset);
             border: 1px solid var(--border);
             border-radius: 0.4rem;
             padding: 0.45rem 0.6rem;
@@ -304,13 +412,15 @@
             max-width: 420px;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        input[type="checkbox"], input[type="radio"] { width: auto; }
+        input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--accent); }
+        input[type="number"], input[name*="cron"], input[name*="interval"] { font-family: var(--font-mono); }
 
         .btn {
             display: inline-block;
             font: inherit;
+            font-family: var(--font-display);
             padding: 0.4rem 0.85rem;
-            border-radius: 0.4rem;
+            border-radius: 0.35rem;
             border: 1px solid var(--border);
             background: var(--bg-elevated);
             color: var(--text);
@@ -319,7 +429,7 @@
             transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
         }
         .btn:hover { border-color: var(--accent); color: var(--accent); }
-        .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
         .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); opacity: 1; color: var(--accent-contrast); }
         .btn-danger { color: var(--danger-text); }
         .btn-danger:hover { border-color: var(--danger-text); }
@@ -404,11 +514,9 @@
             .table-cards td:last-child { border-bottom: none; }
             .table-cards td[data-label]::before {
                 content: attr(data-label);
-                font-size: 0.72rem;
-                text-transform: uppercase;
-                letter-spacing: 0.03em;
+                font-size: 0.78rem;
                 color: var(--text-muted);
-                font-weight: 600;
+                font-weight: 500;
                 flex-shrink: 0;
             }
             .table-cards td:not([data-label]) { display: block; }
@@ -436,7 +544,7 @@
            -- see found_item_list.html -- rather than inline in one column of that item's own row,
            so opening it can't resize a shared table column and reflow every other row. */
         .payload-row pre {
-            background: var(--bg);
+            background: var(--bg-inset);
             border: 1px solid var(--border);
             border-radius: 0.4rem;
             padding: 0.75rem;
@@ -494,7 +602,7 @@
         .confirm-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.45);
+            background: rgba(10, 8, 4, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -517,7 +625,14 @@
     {% block nav %}
     <nav class="topbar" x-data="{ open: false }" @keydown.escape.window="open = false">
         <div class="topbar-inner">
-            <a class="brand" href="{% url 'query_list' %}">Listing Watch</a>
+            <a class="brand" href="{% url 'query_list' %}">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <circle cx="11" cy="11" r="8.2"></circle>
+                    <circle cx="11" cy="11" r="1.4" fill="currentColor" stroke="none"></circle>
+                    <line x1="11" y1="11" x2="11" y2="4.3" stroke-linecap="round"></line>
+                </svg>
+                Listing Watch
+            </a>
             {% if user.is_authenticated %}
             <button type="button" class="nav-toggle" @click="open = !open" @click.outside="open = false"
                     :aria-expanded="open.toString()" aria-controls="nav-links" aria-label="Toggle navigation">
@@ -541,6 +656,14 @@
             {% endif %}
         </div>
     </nav>
+    <script>
+        (function () {
+            var here = window.location.pathname;
+            document.querySelectorAll("nav.topbar .links a[href]").forEach(function (link) {
+                if (link.getAttribute("href") === here) link.setAttribute("aria-current", "page");
+            });
+        })();
+    </script>
     {% endblock %}
     {% if messages %}
     <div class="toast-container" aria-live="polite">

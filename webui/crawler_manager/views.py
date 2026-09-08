@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from crawler_manager import scheduling
@@ -44,8 +45,24 @@ def _visible_profiles(request):
 
 @login_required
 def query_list(request):
-    queries = _visible_queries(request).prefetch_related("notification_configs")
-    return render(request, "crawler_manager/query_list.html", {"queries": queries})
+    queries = list(_visible_queries(request).prefetch_related("notification_configs"))
+
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    is_scanning = any((latest := q.runs.first()) and latest.status in ("pending", "running") for q in queries)
+    last_run = _visible_runs(request).exclude(started_at__isnull=True).order_by("-started_at").first()
+
+    return render(
+        request,
+        "crawler_manager/query_list.html",
+        {
+            "queries": queries,
+            "active_count": sum(1 for q in queries if q.is_active),
+            "total_count": len(queries),
+            "new_today_count": _visible_items(request).filter(first_seen_at__gte=today_start).count(),
+            "is_scanning": is_scanning,
+            "last_run": last_run,
+        },
+    )
 
 
 @login_required

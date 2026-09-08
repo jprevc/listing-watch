@@ -2,6 +2,23 @@
 {% block title %}Queries{% endblock %}
 {% block content %}
 <h1>Queries</h1>
+<div class="status-strip">
+    <div class="status-reading">
+        <div class="reading-label">
+            <span class="status-dot {% if is_scanning %}is-live{% endif %}"></span>
+            {% if is_scanning %}Scanning now{% else %}Watching{% endif %}
+        </div>
+        <div class="reading-value">{{ active_count }}<small>active{% if total_count > active_count %} of {{ total_count }}{% endif %}</small></div>
+    </div>
+    <div class="status-reading">
+        <div class="reading-label">Found today</div>
+        <div class="reading-value">{{ new_today_count }}<small>new item{{ new_today_count|pluralize }}</small></div>
+    </div>
+    <div class="status-reading">
+        <div class="reading-label">Last scan</div>
+        <div class="reading-value" style="font-size: 1.05rem;">{% if last_run %}{{ last_run.started_at|timesince }}<small>ago</small>{% else %}&mdash;<small>no runs yet</small>{% endif %}</div>
+    </div>
+</div>
 <div class="table-wrap table-cards">
 <table>
     <thead>

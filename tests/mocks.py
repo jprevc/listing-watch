@@ -28,17 +28,21 @@ class NtfySessionMock:
     headers carrying title/priority/tags/click/auth info) differs from Pushover's form-encoded dict.
     """
 
-    def __init__(self):
+    def __init__(self, status_code=200):
         self.simulated_messages = []
         self.simulated_headers = []
         self.simulated_urls = []
         self.simulated_auth = []
+        self.status_code = status_code
 
     def post(self, url, data=None, headers=None, auth=None):
         self.simulated_urls.append(url)
         self.simulated_messages.append(data.decode("utf-8") if isinstance(data, (bytes, bytearray)) else data)
         self.simulated_headers.append(headers or {})
         self.simulated_auth.append(auth)
+        response = requests.Response()
+        response.status_code = self.status_code
+        return response
 
 
 class SmtpMock:

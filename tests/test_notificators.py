@@ -4,6 +4,7 @@ Contains tests for Notificator classes.
 from __future__ import annotations
 
 import pytest
+import requests
 
 from listing_watch import notificators
 from tests.mocks import HttpsSessionMock, NtfySessionMock, SmtpMock
@@ -109,6 +110,18 @@ def test_ntfy_send_text_with_non_latin1_subject(ntfy_session_mock: NtfySessionMo
     ntfy.send_text("Ženske, ki tečejo z volkovi", "test_message")
 
     assert ntfy_session_mock.simulated_headers[0]["Title"] == "Ženske, ki tečejo z volkovi".encode("utf-8")
+
+
+def test_ntfy_send_text_raises_on_rejected_publish(monkeypatch) -> None:
+    # Regression test: requests doesn't raise for HTTP error responses on its own, so a rejected
+    # publish (e.g. an invalid/expired ntfy auth token, 401) looked identical to a successful one
+    # -- the crawl run was marked SUCCESS with no error, silently swallowing a real delivery
+    # failure that only ntfy.sh's own response body ever revealed.
+    session_mock = NtfySessionMock(status_code=401)
+    ntfy = _make_ntfy_notificator(session_mock, monkeypatch)
+
+    with pytest.raises(requests.HTTPError):
+        ntfy.send_text("subject", "message")
 
 
 def test_ntfy_default_server_used_in_url(ntfy_session_mock: NtfySessionMock, monkeypatch) -> None:

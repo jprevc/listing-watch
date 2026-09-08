@@ -281,12 +281,18 @@ class NtfyNotificator(Notificator):
         elif self.configuration.get("username") and self.configuration.get("password"):
             auth = (cast(str, self.configuration["username"]), cast(str, self.configuration["password"]))
 
-        session.post(
+        response = session.post(
             f"{server.rstrip('/')}/{topic}",
             data=message.encode("utf-8"),
             headers=headers,
             auth=auth,
         )
+        # requests doesn't raise for HTTP error responses on its own -- without this, a rejected
+        # publish (bad/expired token, unknown topic, server error, ...) looks identical to a
+        # successful one: the crawl run gets marked SUCCESS with no error, silently swallowing a
+        # real delivery failure. Raising surfaces it through send_notifications' existing
+        # per-notificator error aggregation instead.
+        response.raise_for_status()
 
 
 def get_notificator_by_name(name: str) -> type[Notificator]:

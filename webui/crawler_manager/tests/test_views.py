@@ -1,8 +1,10 @@
 import pytest
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from crawler_manager import scheduling
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
+from listing_watch import notificators
 
 pytestmark = pytest.mark.django_db
 
@@ -414,6 +416,71 @@ def test_profile_delete_blocked_when_attached_to_a_query(admin_client, django_us
 
     assert response.status_code == 302
     assert NotificationProfile.objects.filter(pk=profile.pk).exists()
+
+
+def test_profile_test_sends_via_the_profiles_own_notificator_and_config(admin_client, django_user_model, monkeypatch) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Mine", notificator_name="ntfy", config={"topic": "my-topic"}
+    )
+    calls = []
+    monkeypatch.setattr(
+        notificators.NtfyNotificator,
+        "send_text",
+        lambda self, subject, message: calls.append((self.configuration, subject, message)),
+    )
+
+    response = admin_client.post(reverse("profile_test", args=[profile.pk]))
+
+    assert response.status_code == 302
+    assert len(calls) == 1
+    sent_config, subject, message = calls[0]
+    assert sent_config == {"topic": "my-topic"}
+    assert "test" in subject.lower()
+    assert profile.name in message
+    [message_obj] = get_messages(response.wsgi_request)
+    assert message_obj.level_tag == "success"
+
+
+def test_profile_test_shows_failure_as_an_error_message(admin_client, django_user_model, monkeypatch) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Mine", notificator_name="ntfy", config={"topic": "my-topic"}
+    )
+
+    def _raise(self, subject, message):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(notificators.NtfyNotificator, "send_text", _raise)
+
+    response = admin_client.post(reverse("profile_test", args=[profile.pk]))
+
+    assert response.status_code == 302
+    [message_obj] = get_messages(response.wsgi_request)
+    assert message_obj.level_tag == "error"
+    assert "boom" in str(message_obj)
+
+
+def test_profile_test_404s_for_non_owner(client, django_user_model) -> None:
+    owner = django_user_model.objects.create_user(username="owner", password="pw")
+    other = django_user_model.objects.create_user(username="other", password="pw")
+    profile = NotificationProfile.objects.create(
+        user=owner, name="Mine", notificator_name="ntfy", config={"topic": "t"}
+    )
+
+    client.force_login(other)
+    response = client.post(reverse("profile_test", args=[profile.pk]))
+
+    assert response.status_code == 404
+
+
+def test_profile_test_requires_post(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config={"topic": "t"})
+
+    response = admin_client.get(reverse("profile_test", args=[profile.pk]))
+
+    assert response.status_code == 405
 
 
 def test_setting_a_profile_as_default_via_edit_clears_the_previous_default(admin_client, django_user_model) -> None:

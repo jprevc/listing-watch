@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from listing_watch import notificators
+
 from crawler_manager import scheduling
 from crawler_manager.forms import NotificationProfileForm, QueryForm, query_notification_formset_class
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, CrawlRun, FoundItem, NotificationProfile, Query
@@ -255,6 +257,28 @@ def profile_delete(request, pk):
         )
         return redirect("profile_list")
     messages.success(request, f"Notification profile '{profile.name}' deleted.")
+    return redirect("profile_list")
+
+
+@login_required
+@require_POST
+def profile_test(request, pk):
+    """
+    Sends a one-off test notification through the profile's actual notificator/config, so the
+    user can confirm end-to-end delivery (credentials, topic, recipients, ...) without waiting
+    for a real crawl to find something new.
+    """
+    profile = get_object_or_404(_visible_profiles(request), pk=pk)
+    try:
+        notificator_cls = notificators.get_notificator_by_name(profile.notificator_name)
+        notificator_cls(profile.config).send_text(
+            "Listing Watch test",
+            f"This is a test notification from the '{profile.name}' notification profile.",
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        messages.error(request, f"Test notification failed: {exc}")
+    else:
+        messages.success(request, f"Test notification sent via '{profile.name}' -- check your device.")
     return redirect("profile_list")
 
 

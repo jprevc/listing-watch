@@ -75,6 +75,24 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.environ.get("NC_DB_PATH", BASE_DIR / "db.sqlite3"),
+        "OPTIONS": {
+            # This DB is written concurrently by the gunicorn web workers and the separate
+            # `runscheduler` process (crawl results, plus django-apscheduler's own job
+            # bookkeeping). Without WAL, SQLite's rollback-journal mode lets a writer block
+            # every other writer AND reader, so "database is locked" under that concurrency is
+            # routine rather than exceptional -- it once surfaced as an uncaught
+            # OperationalError inside APScheduler's own internal thread, silently killing all
+            # future scheduled runs while the process kept running. WAL + IMMEDIATE transactions
+            # (queues writers instead of racing them at commit time) + a longer busy timeout
+            # (retries instead of failing immediately) is Django's own documented pairing for
+            # this exact multi-writer scenario.
+            "transaction_mode": "IMMEDIATE",
+            "init_command": (
+                "PRAGMA journal_mode=WAL;"
+                "PRAGMA synchronous=NORMAL;"
+                "PRAGMA busy_timeout=30000;"
+            ),
+        },
     }
 }
 

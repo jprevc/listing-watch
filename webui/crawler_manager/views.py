@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from listing_watch import notificators
+from listing_watch import registry
 
 from crawler_manager import scheduling
 from crawler_manager.forms import NotificationProfileForm, QueryForm, query_notification_formset_class
@@ -270,7 +270,7 @@ def profile_test(request, pk):
     """
     profile = get_object_or_404(_visible_profiles(request), pk=pk)
     try:
-        notificator_cls = notificators.get_notificator_by_name(profile.notificator_name)
+        notificator_cls = registry.installed().get_notificator(profile.notificator_name)
         notificator_cls(profile.config).send_text(
             "Listing Watch test",
             f"This is a test notification from the '{profile.name}' notification profile.",

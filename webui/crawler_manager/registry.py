@@ -1,38 +1,24 @@
 """
-Introspects the listing_watch spider/notificator registries to build Django model field choices.
+Django model field choices and web UI hints built from the installed Plugins.
 
 Kept separate from models.py/services.py to avoid a circular import: models.py needs these
-choices for its field definitions, and services.py needs the models themselves.
+choices for its field definitions, and services.py needs the models themselves. Migrations also
+reference the choice callables by this module path, so they must stay here.
 """
 
 from __future__ import annotations
 
-import inspect
-from typing import cast
-
-from listing_watch import notificators, spiders
+from listing_watch import registry
 
 
 def available_spider_choices() -> list[tuple[str, str]]:
-    return sorted(
-        (cast(str, obj.name), cast(str, obj.name))
-        for _, obj in inspect.getmembers(spiders)
-        if inspect.isclass(obj) and issubclass(obj, spiders.Spider) and obj is not spiders.Spider
-    )
+    return [(name, name) for name in registry.installed().spider_names()]
 
 
 def spider_item_fields() -> dict[str, list[str]]:
-    """Maps each spider's `name` to the keys its `run()` items contain, for use in the web UI."""
-    return {
-        cast(str, obj.name): list(obj.item_fields)
-        for _, obj in inspect.getmembers(spiders)
-        if inspect.isclass(obj) and issubclass(obj, spiders.Spider) and obj is not spiders.Spider
-    }
+    """Maps each Spider's name to the Item fields it declares, for use in the web UI."""
+    return registry.installed().spider_item_fields()
 
 
 def available_notificator_choices() -> list[tuple[str, str]]:
-    return sorted(
-        (cast(str, obj.name), cast(str, obj.name))
-        for _, obj in inspect.getmembers(notificators)
-        if inspect.isclass(obj) and issubclass(obj, notificators.Notificator) and obj is not notificators.Notificator
-    )
+    return [(name, name) for name in registry.installed().notificator_names()]

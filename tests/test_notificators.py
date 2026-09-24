@@ -37,18 +37,6 @@ def test_send_text(
     assert session_mock.simulated_messages[0] == "test_message"
 
 
-@pytest.mark.parametrize(
-    "notificator_name,expected",
-    [
-        ("email", notificators.EmailNotificator),
-        ("pushover", notificators.PushoverNotificator),
-        ("ntfy", notificators.NtfyNotificator),
-    ],
-)
-def test_get_notificator_by_name(notificator_name: str, expected: notificators.Notificator) -> None:
-    assert notificators.get_notificator_by_name(notificator_name) == expected
-
-
 @pytest.fixture(name="smtp_mock")
 def smtp_mock_fixture() -> SmtpMock:
     return SmtpMock()
@@ -75,11 +63,6 @@ def test_send_email_text(email_notificator: notificators.EmailNotificator, smtp_
     """
     email_notificator.send_text("test_subject", "test_message")
     assert smtp_mock.simulated_messages[0] == b"Subject: test_subject\n\ntest_message"
-
-
-def test_get_notificator_by_name_raises_key_error_if_notificator_not_found():
-    with pytest.raises(KeyError):
-        assert notificators.get_notificator_by_name("notexistingnotificator")
 
 
 @pytest.fixture(name="ntfy_session_mock")

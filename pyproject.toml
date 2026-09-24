@@ -43,6 +43,16 @@ Homepage = "https://github.com/jprevc/listing-watch"
 Repository = "https://github.com/jprevc/listing-watch"
 Changelog = "https://github.com/jprevc/listing-watch/blob/master/CHANGELOG.md"
 
+# The Core's own Spiders and Notificators register exactly as an external Plugin's would.
+[project.entry-points."listing_watch.spiders"]
+example = "listing_watch.spiders:exampleSpider"
+example = "listing_watch.spiders:exampleSpider"
+
+[project.entry-points."listing_watch.notificators"]
+email = "listing_watch.notificators:EmailNotificator"
+pushover = "listing_watch.notificators:PushoverNotificator"
+ntfy = "listing_watch.notificators:NtfyNotificator"
+
 [project.optional-dependencies]
 dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
 test = [ "pytest", "pytest-cov", "pytest-django",]

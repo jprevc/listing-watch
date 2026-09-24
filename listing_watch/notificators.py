@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import smtplib
-import sys
-import inspect
 from typing import cast
 
 import requests
@@ -294,24 +292,3 @@ class NtfyNotificator(Notificator):
         # per-notificator error aggregation instead.
         response.raise_for_status()
 
-
-def get_notificator_by_name(name: str) -> type[Notificator]:
-    """
-    Finds notificator class with the 'name' attribute equal to the one specified.
-
-    :param name: Value of the 'name' attribute within the notificator class to match.
-
-    :return: Notificator class.
-
-    :raises KeyError: If notificator could not be found.
-    """
-    for _, obj in inspect.getmembers(sys.modules[__name__]):
-        if not inspect.isclass(obj):
-            continue
-        try:
-            if issubclass(obj, Notificator) and obj.name == name:
-                return obj
-        except TypeError:
-            # Ignore runtime typing artifacts such as parameterized builtins.
-            continue
-    raise KeyError(f"Could not find notificator with name attribute set to {name}.")

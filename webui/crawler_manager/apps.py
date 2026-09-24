@@ -3,6 +3,8 @@ import sys
 
 from django.apps import AppConfig
 
+from listing_watch import registry
+
 # Management commands where starting the ad-hoc "run now" scheduler would be pointless or
 # actively unwanted (migrations, tests, and the dedicated `runscheduler` process, which has its
 # own durable scheduler and must not also run this one).
@@ -14,6 +16,10 @@ class CrawlerManagerConfig(AppConfig):
     name = "crawler_manager"
 
     def ready(self) -> None:
+        # Discover the installed Plugins up front, so two Plugins registering the same Spider or
+        # Notificator name stops the Core from starting instead of surfacing mid-request.
+        registry.installed()
+
         # Avoid starting the scheduler twice under the dev-server autoreloader, and skip it
         # entirely for management commands that don't serve requests.
         if os.environ.get("RUN_MAIN") != "true" and "runserver" in sys.argv:

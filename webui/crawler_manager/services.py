@@ -13,7 +13,7 @@ import threading
 from django.db import OperationalError, connection
 from django.utils import timezone
 
-from listing_watch import scrape, spiders
+from listing_watch import registry, scrape, spiders
 
 from crawler_manager.models import CrawlRun, FoundItem, Query
 
@@ -106,7 +106,7 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
     poller.start()
 
     try:
-        spider_cls = spiders.get_spider_by_name(query.spider_name)
+        spider_cls = registry.installed().get_spider(query.spider_name)
         crawled_items = spider_cls(query.name, query.url).run(
             max_pages=max_pages, should_stop=cancel_requested.is_set
         )

@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from typing import cast
 
-from listing_watch import notificators
+from listing_watch import registry
 from listing_watch import spiders
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def send_notifications(
     errors: list[str] = []
     for notificator_type_str, notificator_data in notificator_configs:
         try:
-            notificator = notificators.get_notificator_by_name(notificator_type_str)(notificator_data)
+            notificator = registry.installed().get_notificator(notificator_type_str)(notificator_data)
 
             message_body_format = cast(str, notificator_data["message_body_format"])
 

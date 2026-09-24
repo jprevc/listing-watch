@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from crawler_manager import scheduling
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
-from listing_watch import notificators
+from listing_watch.notificators import Notificator
 
 pytestmark = pytest.mark.django_db
 
@@ -418,17 +418,30 @@ def test_profile_delete_blocked_when_attached_to_a_query(admin_client, django_us
     assert NotificationProfile.objects.filter(pk=profile.pk).exists()
 
 
-def test_profile_test_sends_via_the_profiles_own_notificator_and_config(admin_client, django_user_model, monkeypatch) -> None:
+class _RecordingNotificator(Notificator):
+    name = "pigeon"
+    calls: list[tuple[dict, str, str]] = []
+
+    def send_text(self, subject: str, message: str) -> None:
+        self.calls.append((self.configuration, subject, message))
+
+
+class _FailingNotificator(Notificator):
+    name = "pigeon"
+
+    def send_text(self, subject: str, message: str) -> None:
+        raise RuntimeError("boom")
+
+
+def test_profile_test_sends_via_the_profiles_own_notificator_and_config(
+    admin_client, django_user_model, installed_plugins
+) -> None:
     user = django_user_model.objects.get(username="admin")
     profile = NotificationProfile.objects.create(
-        user=user, name="Mine", notificator_name="ntfy", config={"topic": "my-topic"}
+        user=user, name="Mine", notificator_name="pigeon", config={"topic": "my-topic"}
     )
-    calls = []
-    monkeypatch.setattr(
-        notificators.NtfyNotificator,
-        "send_text",
-        lambda self, subject, message: calls.append((self.configuration, subject, message)),
-    )
+    calls = _RecordingNotificator.calls = []
+    installed_plugins(notificators={"pigeon": _RecordingNotificator})
 
     response = admin_client.post(reverse("profile_test", args=[profile.pk]))
 
@@ -442,16 +455,12 @@ def test_profile_test_sends_via_the_profiles_own_notificator_and_config(admin_cl
     assert message_obj.level_tag == "success"
 
 
-def test_profile_test_shows_failure_as_an_error_message(admin_client, django_user_model, monkeypatch) -> None:
+def test_profile_test_shows_failure_as_an_error_message(admin_client, django_user_model, installed_plugins) -> None:
     user = django_user_model.objects.get(username="admin")
     profile = NotificationProfile.objects.create(
-        user=user, name="Mine", notificator_name="ntfy", config={"topic": "my-topic"}
+        user=user, name="Mine", notificator_name="pigeon", config={"topic": "my-topic"}
     )
-
-    def _raise(self, subject, message):
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(notificators.NtfyNotificator, "send_text", _raise)
+    installed_plugins(notificators={"pigeon": _FailingNotificator})
 
     response = admin_client.post(reverse("profile_test", args=[profile.pk]))
 

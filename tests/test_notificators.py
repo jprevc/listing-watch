@@ -181,3 +181,49 @@ def test_pushover_send_items_repeats_header_when_split_mid_query(
     assert len(session_mock.simulated_messages) == 2
     assert session_mock.simulated_messages[0] == f"Query: q1\n\n{'a' * 600}"
     assert session_mock.simulated_messages[1] == f"Query: q1\n\n{'b' * 600}"
+
+
+@pytest.mark.parametrize(
+    ("notificator", "expected"),
+    [
+        (
+            notificators.EmailNotificator,
+            [
+                ("email_user", "Email address", True, False, None),
+                ("email_password", "Email password", True, True, None),
+                ("recipients", "Recipients (comma-separated email addresses)", True, False, None),
+            ],
+        ),
+        (
+            notificators.PushoverNotificator,
+            [
+                ("app_token", "Pushover app token", True, True, None),
+                ("recipients", "Recipients (comma-separated Pushover user keys)", True, False, None),
+            ],
+        ),
+        (
+            notificators.NtfyNotificator,
+            [
+                ("topic", "Topic", True, False, None),
+                ("server", "Server URL", False, False, "https://ntfy.sh"),
+                ("priority", "Priority", False, False, None),
+                ("tags", "Tags (comma-separated)", False, False, None),
+                ("token", "Auth token", False, True, None),
+                ("username", "Username", False, False, None),
+                ("password", "Password", False, True, None),
+            ],
+        ),
+    ],
+)
+def test_notificators_declare_their_config_fields(
+    notificator: type[notificators.Notificator], expected: list[tuple[str, str, bool, bool, str | None]]
+) -> None:
+    """
+    Test that each Notificator declares the config keys, labels, required/secret rules and defaults
+    its stored Notification Profiles already use.
+
+    :param notificator: Notificator class under test.
+    :param expected: (key, label, required, secret, default) of each declared Config Field, in order.
+    """
+    declared = [(f.key, f.label, f.required, f.secret, f.default) for f in notificator.config_fields]
+    assert declared == expected

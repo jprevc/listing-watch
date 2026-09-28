@@ -6,9 +6,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import smtplib
-from typing import cast
+from typing import Sequence, cast
 
 import requests
+
+from listing_watch.config_field import ConfigField
 
 NotificatorItem = dict[str, str]
 
@@ -23,6 +25,10 @@ class Notificator(ABC):
     @abstractmethod
     def name(self) -> str:
         pass
+
+    # The settings this Notificator needs from the user. The Core renders them as the Notification
+    # Profile form and stores the entered values in `configuration`, under each field's key.
+    config_fields: Sequence[ConfigField] = ()
 
     def __init__(self, configuration: dict[str, str | bool]):
         self.configuration = configuration
@@ -96,6 +102,11 @@ class EmailNotificator(Notificator):
     """
 
     name = "email"
+    config_fields = (
+        ConfigField(key="email_user", label="Email address", required=True),
+        ConfigField(key="email_password", label="Email password", required=True, secret=True),
+        ConfigField(key="recipients", label="Recipients (comma-separated email addresses)", required=True),
+    )
 
     def __init__(self, configuration: dict[str, str | bool]) -> None:
         super().__init__(configuration)
@@ -149,6 +160,10 @@ class PushoverNotificator(Notificator):
     """
 
     name = "pushover"
+    config_fields = (
+        ConfigField(key="app_token", label="Pushover app token", required=True, secret=True),
+        ConfigField(key="recipients", label="Recipients (comma-separated Pushover user keys)", required=True),
+    )
 
     @staticmethod
     def _open_session() -> requests.Session:
@@ -231,6 +246,39 @@ class NtfyNotificator(Notificator):
     """
 
     name = "ntfy"
+    config_fields = (
+        ConfigField(key="topic", label="Topic", required=True),
+        ConfigField(key="server", label="Server URL", default="https://ntfy.sh"),
+        ConfigField(
+            key="priority",
+            label="Priority",
+            help_text=(
+                "How urgently ntfy delivers/displays the notification: min, low, default, high, or "
+                "urgent (or 1-5). Leave blank for default. urgent/5 bypasses silent mode on some devices."
+            ),
+        ),
+        ConfigField(
+            key="tags",
+            label="Tags (comma-separated)",
+            help_text=(
+                "Comma-separated labels. A tag matching a known emoji short name (e.g. warning, "
+                "rotating_light, white_check_mark) is shown as an emoji prefix; other tags are shown as "
+                "plain text tags."
+            ),
+        ),
+        ConfigField(
+            key="token",
+            label="Auth token",
+            secret=True,
+            help_text=(
+                "Only needed if your topic requires authentication. Use either this access token or the "
+                "username and password below, not both. Leave the token, username and password blank for "
+                "an unauthenticated topic on public ntfy.sh."
+            ),
+        ),
+        ConfigField(key="username", label="Username"),
+        ConfigField(key="password", label="Password", secret=True),
+    )
 
     @staticmethod
     def _open_session() -> requests.Session:

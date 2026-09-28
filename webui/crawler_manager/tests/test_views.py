@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from crawler_manager import scheduling
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
+from listing_watch.config_field import ConfigField
 from listing_watch.notificators import Notificator
 
 pytestmark = pytest.mark.django_db
@@ -366,7 +367,7 @@ def test_profile_list_hides_other_users_profiles_even_for_staff(admin_client, dj
 
 
 def test_profile_create_sets_owner_and_config(admin_client, django_user_model) -> None:
-    data = {"name": "My ntfy", "notificator_name": "ntfy", "topic": "my-topic"}
+    data = {"name": "My ntfy", "notificator_name": "ntfy", "ntfy__topic": "my-topic"}
     response = admin_client.post(reverse("profile_create"), data)
 
     assert response.status_code == 302
@@ -416,6 +417,127 @@ def test_profile_delete_blocked_when_attached_to_a_query(admin_client, django_us
 
     assert response.status_code == 302
     assert NotificationProfile.objects.filter(pk=profile.pk).exists()
+
+
+class _ConfiguredNotificator(Notificator):
+    name = "pigeon"
+    config_fields = (
+        ConfigField(key="roost", label="Roost address", required=True),
+        ConfigField(key="api_key", label="API key", secret=True),
+        ConfigField(key="speed", label="Flight speed", choices=("slow", "fast"), default="fast"),
+        ConfigField(key="note", label="Note", help_text="Tied to the pigeon's leg."),
+    )
+
+    def send_text(self, subject: str, message: str) -> None:
+        pass
+
+
+class _OtherConfiguredNotificator(Notificator):
+    name = "smoke"
+    config_fields = (ConfigField(key="hill", label="Hill", required=True),)
+
+    def send_text(self, subject: str, message: str) -> None:
+        pass
+
+
+def _profile_data(**config_values: str) -> dict[str, str]:
+    data = {"name": "Carrier", "notificator_name": "pigeon"}
+    data.update({f"pigeon__{key}": value for key, value in config_values.items()})
+    return data
+
+
+def test_profile_form_renders_the_notificators_config_fields(admin_client, installed_plugins) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+
+    response = admin_client.get(reverse("profile_create"))
+
+    content = response.content.decode()
+    assert "Roost address" in content
+    assert 'type="text" name="pigeon__roost"' in content
+    assert 'type="password" name="pigeon__api_key"' in content
+    assert '<select name="pigeon__speed"' in content
+    assert '<option value="fast" selected>fast</option>' in content
+    assert "Tied to the pigeon&#x27;s leg." in content
+
+
+def test_profile_form_shows_only_the_chosen_notificators_fields(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator, "smoke": _OtherConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Carrier", notificator_name="pigeon", config={"roost": "loft"}
+    )
+
+    response = admin_client.get(reverse("profile_edit", args=[profile.pk]))
+
+    content = response.content.decode()
+    assert '<div class="notif-type-fields" data-notificator="pigeon" >' in content
+    assert '<div class="notif-type-fields" data-notificator="smoke" hidden>' in content
+
+
+def test_profile_create_saves_config_under_config_field_keys(
+    admin_client, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator, "smoke": _OtherConfiguredNotificator})
+
+    response = admin_client.post(
+        reverse("profile_create"),
+        {**_profile_data(roost="loft", api_key="s3cret", speed="slow", note=""), "smoke__hill": "ignored"},
+    )
+
+    assert response.status_code == 302
+    profile = NotificationProfile.objects.get(name="Carrier")
+    assert profile.config == {"roost": "loft", "api_key": "s3cret", "speed": "slow"}
+
+
+def test_profile_create_rejects_missing_required_config_field(admin_client, installed_plugins) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator, "smoke": _OtherConfiguredNotificator})
+
+    response = admin_client.post(reverse("profile_create"), _profile_data(api_key="s3cret"))
+
+    assert response.status_code == 200
+    assert response.context["form"].errors == {"pigeon__roost": ["Roost address is required for pigeon."]}
+    assert not NotificationProfile.objects.filter(name="Carrier").exists()
+
+
+def test_profile_create_rejects_a_value_outside_the_choices(admin_client, installed_plugins) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+
+    response = admin_client.post(reverse("profile_create"), _profile_data(roost="loft", speed="warp"))
+
+    assert response.status_code == 200
+    assert "pigeon__speed" in response.context["form"].errors
+
+
+def test_profile_edit_shows_stored_config_including_secrets(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Carrier", notificator_name="pigeon", config={"roost": "loft", "api_key": "s3cret"}
+    )
+
+    response = admin_client.get(reverse("profile_edit", args=[profile.pk]))
+
+    content = response.content.decode()
+    assert 'name="pigeon__roost" value="loft"' in content
+    assert 'name="pigeon__api_key" value="s3cret"' in content
+
+
+def test_existing_ntfy_profile_saves_without_changing_its_config_keys(admin_client, django_user_model) -> None:
+    user = django_user_model.objects.get(username="admin")
+    config = {"topic": "t", "server": "https://ntfy.example", "token": "tk"}
+    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config=config)
+    form = admin_client.get(reverse("profile_edit", args=[profile.pk])).context["form"]
+
+    data = {f.name: f.value() for f in form if f.value() not in (None, False)}
+    response = admin_client.post(reverse("profile_edit", args=[profile.pk]), data)
+
+    assert response.status_code == 302
+    profile.refresh_from_db()
+    assert profile.config == config
 
 
 class _RecordingNotificator(Notificator):
@@ -503,7 +625,7 @@ def test_setting_a_profile_as_default_via_edit_clears_the_previous_default(admin
 
     response = admin_client.post(
         reverse("profile_edit", args=[second.pk]),
-        {"name": "Second", "notificator_name": "ntfy", "topic": "t2", "is_default": "on"},
+        {"name": "Second", "notificator_name": "ntfy", "ntfy__topic": "t2", "is_default": "on"},
     )
 
     assert response.status_code == 302

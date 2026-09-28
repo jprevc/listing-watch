@@ -5,36 +5,25 @@ from django.forms import inlineformset_factory
 
 from crawler_manager import schedule_utils
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
+from listing_watch import registry
+from listing_watch.config_field import ConfigField
 
-# Maps each notificator type to its type-specific form fields, as (form_field_name, config_key)
-# pairs. Hardcoded against the 3 notificator implementations in listing_watch/notificators.py --
-# adding a new Notificator subclass means adding an entry here too.
-NOTIFICATOR_TYPE_FIELDS: dict[str, list[tuple[str, str]]] = {
-    "email": [
-        ("email_user", "email_user"),
-        ("email_password", "email_password"),
-        ("email_recipients", "recipients"),
-    ],
-    "pushover": [
-        ("app_token", "app_token"),
-        ("pushover_recipients", "recipients"),
-    ],
-    "ntfy": [
-        ("topic", "topic"),
-        ("server", "server"),
-        ("priority", "priority"),
-        ("tags", "tags"),
-        ("token", "token"),
-        ("username", "username"),
-        ("password", "password"),
-    ],
-}
 
-NOTIFICATOR_REQUIRED_FIELDS: dict[str, list[str]] = {
-    "email": ["email_user", "email_password", "email_recipients"],
-    "pushover": ["app_token", "pushover_recipients"],
-    "ntfy": ["topic"],
-}
+def _form_field_name(notificator_name: str, config_key: str) -> str:
+    # Every installed Notificator's inputs are on the page at once (the template shows only the
+    # chosen one's), and two Notificators may share a config key, so form names are namespaced.
+    return f"{notificator_name}__{config_key}"
+
+
+def _django_field(config_field: ConfigField) -> forms.Field:
+    """Turns a declared Config Field into a form field. `required` is enforced in the form's clean()."""
+    common = {"required": False, "label": config_field.label, "help_text": config_field.help_text}
+    if config_field.choices is not None:
+        return forms.ChoiceField(
+            choices=[("", "---------"), *((choice, choice) for choice in config_field.choices)], **common
+        )
+    widget = forms.PasswordInput(render_value=True) if config_field.secret else None
+    return forms.CharField(widget=widget, **common)
 
 
 class QueryForm(forms.ModelForm):
@@ -83,76 +72,57 @@ class QueryForm(forms.ModelForm):
 
 
 class NotificationProfileForm(forms.ModelForm):
-    """Create/edit a reusable NotificationProfile: its identity fields plus its type-specific config."""
+    """
+    Create/edit a reusable NotificationProfile: its identity fields plus the Config Fields its
+    Notificator declares, whose values are stored in the Profile's config under each field's key.
+    """
 
     class Meta:
         model = NotificationProfile
         fields = ["name", "notificator_name", "is_default"]
 
-    email_user = forms.CharField(required=False, label="Email address")
-    email_password = forms.CharField(
-        required=False, label="Email password", widget=forms.PasswordInput(render_value=True)
-    )
-    email_recipients = forms.CharField(required=False, label="Recipients (comma-separated email addresses)")
-
-    app_token = forms.CharField(
-        required=False, label="Pushover app token", widget=forms.PasswordInput(render_value=True)
-    )
-    pushover_recipients = forms.CharField(required=False, label="Recipients (comma-separated Pushover user keys)")
-
-    topic = forms.CharField(required=False, label="Topic")
-    server = forms.CharField(required=False, label="Server URL", initial="https://ntfy.sh")
-    priority = forms.CharField(
-        required=False,
-        label="Priority",
-        help_text=(
-            "How urgently ntfy delivers/displays the notification: min, low, default, high, or "
-            "urgent (or 1-5). Leave blank for default. urgent/5 bypasses silent mode on some devices."
-        ),
-    )
-    tags = forms.CharField(
-        required=False,
-        label="Tags (comma-separated)",
-        help_text=(
-            "Comma-separated labels. A tag matching a known emoji short name (e.g. warning, "
-            "rotating_light, white_check_mark) is shown as an emoji prefix; other tags are shown as "
-            "plain text tags."
-        ),
-    )
-    token = forms.CharField(required=False, label="Auth token", widget=forms.PasswordInput(render_value=True))
-    username = forms.CharField(required=False, label="Username")
-    password = forms.CharField(required=False, label="Password", widget=forms.PasswordInput(render_value=True))
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        config = self.instance.config if self.instance and self.instance.pk else {}
-        notificator_name = self.initial.get("notificator_name") or getattr(self.instance, "notificator_name", "")
-        for form_field, config_key in NOTIFICATOR_TYPE_FIELDS.get(notificator_name, []):
-            if config_key in config:
-                self.fields[form_field].initial = config[config_key]
+        stored_config = self.instance.config if self.instance.pk else {}
+        stored_notificator = self.instance.notificator_name if self.instance.pk else None
+        installed = registry.installed()
+
+        # Each installed Notificator's name -> its (form field name, Config Field) pairs, in render order.
+        self._config_fields: dict[str, list[tuple[str, ConfigField]]] = {}
+        for notificator_name in installed.notificator_names():
+            fields = self._config_fields[notificator_name] = []
+            for config_field in installed.get_notificator(notificator_name).config_fields:
+                form_field_name = _form_field_name(notificator_name, config_field.key)
+                form_field = self.fields[form_field_name] = _django_field(config_field)
+                if notificator_name == stored_notificator and config_field.key in stored_config:
+                    form_field.initial = stored_config[config_field.key]
+                else:
+                    form_field.initial = config_field.default
+                fields.append((form_field_name, config_field))
+
+    @property
+    def config_field_groups(self) -> list[tuple[str, list[forms.BoundField]]]:
+        """Each installed Notificator's name with its Config Fields' bound form fields, for the template."""
+        return [
+            (notificator_name, [self[form_field_name] for form_field_name, _ in fields])
+            for notificator_name, fields in self._config_fields.items()
+        ]
 
     def clean(self):
         cleaned = super().clean()
         notificator_name = cleaned.get("notificator_name")
-        if not notificator_name:
-            return cleaned
-
-        for form_field in NOTIFICATOR_REQUIRED_FIELDS.get(notificator_name, []):
-            if not cleaned.get(form_field):
-                self.add_error(form_field, "This field is required for the selected notificator.")
-
+        for form_field_name, config_field in self._config_fields.get(notificator_name, []):
+            if config_field.required and not cleaned.get(form_field_name):
+                self.add_error(form_field_name, f"{config_field.label} is required for {notificator_name}.")
         return cleaned
 
     def save(self, commit=True):
         notificator_name = self.cleaned_data.get("notificator_name")
-        config: dict[str, str] = {}
-
-        for form_field, config_key in NOTIFICATOR_TYPE_FIELDS.get(notificator_name, []):
-            value = self.cleaned_data.get(form_field)
-            if value:
-                config[config_key] = value
-
-        self.instance.config = config
+        self.instance.config = {
+            config_field.key: value
+            for form_field_name, config_field in self._config_fields.get(notificator_name, [])
+            if (value := self.cleaned_data.get(form_field_name))
+        }
         return super().save(commit=commit)
 
 

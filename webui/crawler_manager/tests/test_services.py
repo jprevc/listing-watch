@@ -5,6 +5,7 @@ import pytest
 from crawler_manager import services
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 from listing_watch.config_field import ConfigField
+from listing_watch.notificators import Notificator
 from listing_watch.spiders import Spider
 
 pytestmark = pytest.mark.django_db
@@ -146,3 +147,32 @@ def test_run_query_passes_its_spider_config_to_the_spider(installed_plugins) -> 
 
     assert run.status == CrawlRun.Status.SUCCESS
     assert received_configs == [{"region": "north"}]
+
+
+def test_run_query_reports_an_unavailable_profile_as_a_delivery_failure_and_still_sends_the_others(
+    query: Query, installed_plugins
+) -> None:
+    sent_subjects = []
+
+    class _PigeonNotificator(Notificator):
+        name = "pigeon"
+
+        def send_text(self, subject: str, message: str) -> None:
+            sent_subjects.append(subject)
+
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "query": "test_query"}]
+    installed_plugins(spiders={"example": _FakeSpider}, notificators={"pigeon": _PigeonNotificator})
+    unavailable = NotificationProfile.objects.create(name="old smoke", notificator_name="smoke", config={})
+    available = NotificationProfile.objects.create(name="carrier", notificator_name="pigeon", config={})
+    QueryNotificationConfig.objects.create(query=query, profile=unavailable, message_body_format="{title}")
+    QueryNotificationConfig.objects.create(query=query, profile=available, message_body_format="{title}")
+
+    run = services.run_query(query)
+
+    assert sent_subjects == ["test_query news"]
+    assert run.status == CrawlRun.Status.FAILED
+    assert (
+        run.error_message
+        == "Some notificators failed: smoke: No installed Plugin provides a Notificator named 'smoke'."
+    )
+    assert FoundItem.objects.filter(query=query).count() == 1

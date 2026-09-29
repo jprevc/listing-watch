@@ -31,3 +31,15 @@ def spider_unavailable_reason(spider_name: str) -> str:
     except registry.PluginNotInstalledError as exc:
         return str(exc)
     return ""
+
+
+def notificator_unavailable_reason(notificator_name: str) -> str:
+    """
+    Why a Notification Profile using this Notificator is Unavailable (no installed Plugin provides it),
+    or "" if it's installed.
+    """
+    try:
+        registry.installed().get_notificator(notificator_name)
+    except registry.PluginNotInstalledError as exc:
+        return str(exc)
+    return ""

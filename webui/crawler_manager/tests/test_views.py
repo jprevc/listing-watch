@@ -840,3 +840,73 @@ def test_query_run_now_on_an_unavailable_query_records_a_failed_run(admin_client
     run = query.runs.get()
     assert (run.status, run.trigger) == (CrawlRun.Status.FAILED, CrawlRun.Trigger.MANUAL)
     assert run.error_message == "No installed Plugin provides a Spider named 'cars'."
+
+
+def test_profile_list_marks_an_unavailable_profile_and_names_the_missing_notificator(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    NotificationProfile.objects.create(user=user, name="Old", notificator_name="smoke", config={"hill": "north"})
+    NotificationProfile.objects.create(user=user, name="Carrier", notificator_name="pigeon", config={"roost": "loft"})
+
+    response = admin_client.get(reverse("profile_list"))
+
+    content = response.content.decode()
+    assert content.count('<span class="badge badge-unavailable">Unavailable</span>') == 1
+    assert "No installed Plugin provides a Notificator named &#x27;smoke&#x27;." in content
+
+
+def test_profile_edit_of_an_unavailable_profile_is_read_only_with_an_explanation(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Old", notificator_name="smoke", config={"hill": "north"}
+    )
+
+    response = admin_client.get(reverse("profile_edit", args=[profile.pk]))
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "No installed Plugin provides a Notificator named &#x27;smoke&#x27;." in content
+    assert re.search(r'<input [^>]*name="name" value="Old"[^>]*disabled', content)
+    assert re.search(r'<select [^>]*name="notificator_name"[^>]*disabled', content)
+    assert ">Save</button>" not in content
+
+
+def test_profile_edit_post_to_an_unavailable_profile_keeps_its_config(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Old", notificator_name="smoke", config={"hill": "north"}
+    )
+
+    response = admin_client.post(reverse("profile_edit", args=[profile.pk]), _profile_data(roost="loft"))
+
+    assert response.status_code == 409
+    profile.refresh_from_db()
+    assert (profile.name, profile.notificator_name, profile.config) == ("Old", "smoke", {"hill": "north"})
+
+
+def test_profile_test_on_an_unavailable_profile_says_the_plugin_is_not_installed(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
+    user = django_user_model.objects.get(username="admin")
+    profile = NotificationProfile.objects.create(
+        user=user, name="Old", notificator_name="smoke", config={"hill": "north"}
+    )
+
+    response = admin_client.post(reverse("profile_test", args=[profile.pk]))
+
+    assert response.status_code == 302
+    [message_obj] = get_messages(response.wsgi_request)
+    assert message_obj.level_tag == "error"
+    assert str(message_obj) == (
+        "Can't send a test through 'Old': No installed Plugin provides a Notificator named 'smoke'. "
+        "Install a Plugin that provides it to use this profile again."
+    )

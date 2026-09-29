@@ -10,7 +10,12 @@ from django.conf import settings
 from django.db import models
 
 from crawler_manager import schedule_utils
-from crawler_manager.registry import available_notificator_choices, available_spider_choices, spider_unavailable_reason
+from crawler_manager.registry import (
+    available_notificator_choices,
+    available_spider_choices,
+    notificator_unavailable_reason,
+    spider_unavailable_reason,
+)
 
 DEFAULT_MESSAGE_BODY_FORMAT = "Title: {title}\nURL: {url}\nPrice: {price}"
 
@@ -135,6 +140,14 @@ class NotificationProfile(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.notificator_name})"
+
+    @property
+    def unavailable_reason(self) -> str:
+        """
+        Why this Profile is Unavailable (no installed Plugin provides its Notificator), or "" if it isn't.
+        An Unavailable Profile is kept, with its config, but can't be edited or tested, and sending through it fails.
+        """
+        return notificator_unavailable_reason(self.notificator_name)
 
     def save(self, *args, **kwargs) -> None:
         # Setting a profile as the default for its (user, notificator_name) silently replaces

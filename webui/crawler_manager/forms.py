@@ -7,7 +7,7 @@ from django.forms import inlineformset_factory
 
 from crawler_manager import schedule_utils
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
-from crawler_manager.registry import available_spider_choices
+from crawler_manager.registry import available_notificator_choices, available_spider_choices
 from listing_watch import registry
 from listing_watch.config_field import ConfigField
 
@@ -171,6 +171,19 @@ class NotificationProfileForm(ConfigFieldsMixin, forms.ModelForm):
         self._add_config_fields(
             {name: installed.get_notificator(name).config_fields for name in installed.notificator_names()}
         )
+        if self.instance.pk is not None and self.instance.unavailable_reason:
+            self._make_read_only()
+
+    def _make_read_only(self) -> None:
+        """An Unavailable Profile can't be edited: every field is disabled, and its missing Notificator stays selected."""
+        notificator_field = self.fields["notificator_name"]
+        assert isinstance(notificator_field, forms.ChoiceField)
+        notificator_field.choices = [
+            *available_notificator_choices(),
+            (self.instance.notificator_name, self.instance.notificator_name),
+        ]
+        for field in self.fields.values():
+            field.disabled = True
 
     def clean(self):
         cleaned = super().clean()

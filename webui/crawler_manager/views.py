@@ -251,6 +251,19 @@ def profile_create(request):
 @require_http_methods(["GET", "POST"])
 def profile_edit(request, pk):
     profile = get_object_or_404(_visible_profiles(request), pk=pk)
+    unavailable_reason = profile.unavailable_reason
+    if unavailable_reason:
+        # Shown read-only, and never saved: its stored config belongs to a Notificator that isn't installed.
+        return render(
+            request,
+            "crawler_manager/profile_form.html",
+            {
+                "form": NotificationProfileForm(instance=profile),
+                "profile": profile,
+                "unavailable_reason": unavailable_reason,
+            },
+            status=409 if request.method == "POST" else 200,
+        )
     if request.method == "POST":
         form = NotificationProfileForm(request.POST, instance=profile)
         if form.is_valid():
@@ -289,6 +302,14 @@ def profile_test(request, pk):
     for a real crawl to find something new.
     """
     profile = get_object_or_404(_visible_profiles(request), pk=pk)
+    unavailable_reason = profile.unavailable_reason
+    if unavailable_reason:
+        messages.error(
+            request,
+            f"Can't send a test through '{profile.name}': {unavailable_reason} "
+            "Install a Plugin that provides it to use this profile again.",
+        )
+        return redirect("profile_list")
     try:
         notificator_cls = registry.installed().get_notificator(profile.notificator_name)
         notificator_cls(profile.config).send_text(

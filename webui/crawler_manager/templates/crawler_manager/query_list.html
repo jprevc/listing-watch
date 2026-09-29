@@ -34,11 +34,14 @@
         </tr>
     </thead>
     <tbody>
-        {% for query in queries %}
+        {% for query in queries %}{% with unavailable_reason=query.unavailable_reason %}
         <tr>
             <td class="cell-primary" title="{{ query.name }}">{{ query.name }}</td>
             {% if request.user.is_staff %}<td data-label="Owner">{{ query.user|default:"—" }}</td>{% endif %}
-            <td data-label="Spider">{{ query.spider_name }}</td>
+            <td data-label="Spider">
+                {{ query.spider_name }}
+                {% if unavailable_reason %}<span class="badge badge-unavailable">Unavailable</span><span class="helptext">{{ unavailable_reason }}</span>{% endif %}
+            </td>
             <td data-label="URL"><a href="{{ query.url }}" target="_blank" rel="noopener">{{ query.url|truncatechars:50 }}</a></td>
             <td data-label="Schedule">{{ query.schedule_display }}</td>
             <td data-label="Active">{{ query.is_active|yesno:"yes,no" }}</td>
@@ -52,7 +55,7 @@
                     <a class="btn btn-icon" href="{% url 'run_history_list' %}?query={{ query.name|urlencode }}" title="Run history" aria-label="Run history">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </a>
-                    <a class="btn btn-icon" href="{% url 'query_edit' query.pk %}" title="Edit" aria-label="Edit">
+                    <a class="btn btn-icon" href="{% url 'query_edit' query.pk %}" {% if unavailable_reason %}title="View (read-only)" aria-label="View (read-only)"{% else %}title="Edit" aria-label="Edit"{% endif %}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </a>
                     <button type="button" class="btn btn-icon btn-danger" title="Delete" aria-label="Delete"
@@ -79,7 +82,7 @@
                 </div>
             </td>
         </tr>
-        {% empty %}
+        {% endwith %}{% empty %}
         <tr><td colspan="{% if request.user.is_staff %}8{% else %}7{% endif %}" class="empty">No queries configured yet. <a href="{% url 'query_create' %}">Add one</a>.</td></tr>
         {% endfor %}
     </tbody>

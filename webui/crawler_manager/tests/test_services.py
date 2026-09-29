@@ -86,7 +86,7 @@ def test_run_query_marks_failed_when_spider_is_not_installed(query: Query, insta
     run = services.run_query(query)
 
     assert run.status == CrawlRun.Status.FAILED
-    assert "example" in run.error_message
+    assert run.error_message == "No installed Plugin provides a Spider named 'example'."
 
 
 @pytest.mark.django_db(transaction=True)

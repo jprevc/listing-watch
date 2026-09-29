@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.contrib.messages import get_messages
 from django.urls import reverse
@@ -775,3 +777,66 @@ def test_query_edit_switching_spider_drops_the_old_spider_config(admin_client, i
     query.refresh_from_db()
     assert query.spider_name == "bikes"
     assert query.spider_config == {}
+
+
+def test_query_list_marks_an_unavailable_query_and_names_the_missing_spider(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+    Query.objects.create(name="old_cars", spider_name="cars", url="https://example.com")
+    Query.objects.create(name="new_bikes", spider_name="bikes", url="https://example.com")
+
+    response = admin_client.get(reverse("query_list"))
+
+    content = response.content.decode()
+    assert content.count('<span class="badge badge-unavailable">Unavailable</span>') == 1
+    assert "No installed Plugin provides a Spider named &#x27;cars&#x27;." in content
+
+
+def test_query_edit_of_an_unavailable_query_is_read_only_with_an_explanation(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+    query = Query.objects.create(name="old_cars", spider_name="cars", url="https://example.com")
+
+    response = admin_client.get(reverse("query_edit", args=[query.pk]))
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "No installed Plugin provides a Spider named &#x27;cars&#x27;." in content
+    assert re.search(r'<input [^>]*name="name" value="old_cars"[^>]*disabled', content)
+    assert re.search(r'<select [^>]*name="spider_name"[^>]*disabled', content)
+    assert ">Save</button>" not in content
+
+
+def test_query_edit_post_to_an_unavailable_query_does_not_change_it(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+    query = Query.objects.create(name="old_cars", spider_name="cars", url="https://example.com")
+
+    response = admin_client.post(reverse("query_edit", args=[query.pk]), {**_query_data("bikes"), "name": "renamed"})
+
+    assert response.status_code == 409
+    query.refresh_from_db()
+    assert (query.name, query.spider_name) == ("old_cars", "cars")
+
+
+def test_query_delete_removes_an_unavailable_query(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+    query = Query.objects.create(name="old_cars", spider_name="cars", url="https://example.com")
+
+    response = admin_client.post(reverse("query_delete", args=[query.pk]))
+
+    assert response.status_code == 302
+    assert not Query.objects.filter(pk=query.pk).exists()
+
+
+def test_query_run_now_on_an_unavailable_query_records_a_failed_run(admin_client, installed_plugins, monkeypatch) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+    query = Query.objects.create(name="old_cars", spider_name="cars", url="https://example.com")
+    # Runs the job inline instead of on the background scheduler, so its outcome can be checked.
+    monkeypatch.setattr(
+        scheduling, "trigger_manual_run", lambda q: scheduling.run_query_job(q.id, CrawlRun.Trigger.MANUAL)
+    )
+
+    response = admin_client.post(reverse("query_run_now", args=[query.pk]))
+
+    assert response.status_code == 200
+    run = query.runs.get()
+    assert (run.status, run.trigger) == (CrawlRun.Status.FAILED, CrawlRun.Trigger.MANUAL)
+    assert run.error_message == "No installed Plugin provides a Spider named 'cars'."

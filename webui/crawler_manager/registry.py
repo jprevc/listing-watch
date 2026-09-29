@@ -22,3 +22,12 @@ def spider_item_fields() -> dict[str, list[str]]:
 
 def available_notificator_choices() -> list[tuple[str, str]]:
     return [(name, name) for name in registry.installed().notificator_names()]
+
+
+def spider_unavailable_reason(spider_name: str) -> str:
+    """Why a Query using this Spider is Unavailable (no installed Plugin provides it), or "" if it's installed."""
+    try:
+        registry.installed().get_spider(spider_name)
+    except registry.PluginNotInstalledError as exc:
+        return str(exc)
+    return ""

@@ -106,6 +106,26 @@ def query_create(request):
 @require_http_methods(["GET", "POST"])
 def query_edit(request, pk):
     query = get_object_or_404(_visible_queries(request), pk=pk)
+    unavailable_reason = query.unavailable_reason
+    if unavailable_reason:
+        # Shown read-only, and never saved: saving would need a Spider that isn't installed.
+        form = QueryForm(instance=query)
+        formset = QueryNotificationConfigFormSet(instance=query, form_kwargs={"user": request.user})
+        for notification_form in formset:
+            for field in notification_form.fields.values():
+                field.disabled = True
+        return render(
+            request,
+            "crawler_manager/query_form.html",
+            {
+                "form": form,
+                "formset": formset,
+                "query": query,
+                "spider_item_fields": spider_item_fields(),
+                "unavailable_reason": unavailable_reason,
+            },
+            status=409 if request.method == "POST" else 200,
+        )
     if request.method == "POST":
         form = QueryForm(request.POST, instance=query)
         formset = QueryNotificationConfigFormSet(request.POST, instance=query, form_kwargs={"user": request.user})

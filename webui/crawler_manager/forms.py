@@ -7,6 +7,7 @@ from django.forms import inlineformset_factory
 
 from crawler_manager import schedule_utils
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
+from crawler_manager.registry import available_spider_choices
 from listing_watch import registry
 from listing_watch.config_field import ConfigField
 
@@ -114,6 +115,16 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
             self.fields["interval_unit"].initial = schedule_utils.MINUTES
         installed = registry.installed()
         self._add_config_fields({name: installed.get_spider(name).config_fields for name in installed.spider_names()})
+        if self.instance.pk is not None and self.instance.unavailable_reason:
+            self._make_read_only()
+
+    def _make_read_only(self) -> None:
+        """An Unavailable Query can't be edited: every field is disabled, and its missing Spider stays selected."""
+        spider_field = self.fields["spider_name"]
+        assert isinstance(spider_field, forms.ChoiceField)
+        spider_field.choices = [*available_spider_choices(), (self.instance.spider_name, self.instance.spider_name)]
+        for field in self.fields.values():
+            field.disabled = True
 
     def clean(self):
         cleaned = super().clean()

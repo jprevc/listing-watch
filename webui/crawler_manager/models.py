@@ -10,7 +10,7 @@ from django.conf import settings
 from django.db import models
 
 from crawler_manager import schedule_utils
-from crawler_manager.registry import available_notificator_choices, available_spider_choices
+from crawler_manager.registry import available_notificator_choices, available_spider_choices, spider_unavailable_reason
 
 DEFAULT_MESSAGE_BODY_FORMAT = "Title: {title}\nURL: {url}\nPrice: {price}"
 
@@ -80,6 +80,14 @@ class Query(models.Model):
         # ADVANCED (or an incomplete SIMPLE row pending form validation): cron_schedule is left
         # as whatever was explicitly set.
         super().save(*args, **kwargs)
+
+    @property
+    def unavailable_reason(self) -> str:
+        """
+        Why this Query is Unavailable (no installed Plugin provides its Spider), or "" if it isn't.
+        An Unavailable Query is kept, with its runs and Items, but can't be edited, and its runs fail.
+        """
+        return spider_unavailable_reason(self.spider_name)
 
     @property
     def schedule_display(self) -> str:

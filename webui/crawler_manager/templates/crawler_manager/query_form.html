@@ -2,6 +2,12 @@
 {% block title %}{% if query %}Edit query{% else %}Add query{% endif %}{% endblock %}
 {% block content %}
 <h1>{% if query %}Edit query: {{ query.name }}{% else %}Add query{% endif %}</h1>
+{% if unavailable_reason %}
+<div class="card callout-unavailable" role="status">
+    <p><span class="badge badge-unavailable">Unavailable</span> {{ unavailable_reason }}</p>
+    <p>This query can't be edited until a Plugin providing that Spider is installed. Its settings, run history and found items are kept, and you can still delete it.</p>
+</div>
+{% endif %}
 <form method="post">
     {% csrf_token %}
     {{ spider_item_fields|json_script:"spider-item-fields" }}
@@ -82,17 +88,23 @@
             </div>
             {% endfor %}
 
+            {% if not unavailable_reason %}
             <div class="btn-row">
                 <button type="button" id="add-notification-btn" class="btn">+ Add notification</button>
                 <a class="btn" href="{% url 'profile_create' %}" target="_blank" rel="noopener">+ Create new profile</a>
                 <button type="button" id="refresh-profiles-btn" class="btn" title="Pick up a profile just created in another tab">↻ Refresh profile list</button>
             </div>
+            {% endif %}
         </div>
     </details>
 
     <div class="btn-row" style="margin-top: 1.25rem;">
+        {% if unavailable_reason %}
+        <a class="btn" href="{% url 'query_list' %}">Back to queries</a>
+        {% else %}
         <button class="btn btn-primary" type="submit">Save</button>
         <a class="btn" href="{% url 'query_list' %}">Cancel</a>
+        {% endif %}
     </div>
 </form>
 

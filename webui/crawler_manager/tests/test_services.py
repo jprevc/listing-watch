@@ -171,8 +171,7 @@ def test_run_query_reports_an_unavailable_profile_as_a_delivery_failure_and_stil
 
     assert sent_subjects == ["test_query news"]
     assert run.status == CrawlRun.Status.FAILED
-    assert (
-        run.error_message
-        == "Some notificators failed: smoke: No installed Plugin provides a Notificator named 'smoke'."
+    assert run.error_message == (
+        "Some notificators failed: old smoke (smoke): No installed Plugin provides a Notificator named 'smoke'."
     )
     assert FoundItem.objects.filter(query=query).count() == 1

@@ -4,6 +4,8 @@ import pytest
 
 from crawler_manager import services
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
+from listing_watch.config_field import ConfigField
+from listing_watch.spiders import Spider
 
 pytestmark = pytest.mark.django_db
 
@@ -11,7 +13,7 @@ pytestmark = pytest.mark.django_db
 class _FakeSpider:
     items: list[dict] = []
 
-    def __init__(self, query_name, url):
+    def __init__(self, query_name, url, config=None):
         self.query_name = query_name
         self.url = url
 
@@ -101,7 +103,7 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
     class _CancellingSpider:
         items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
 
-        def __init__(self, query_name, url):
+        def __init__(self, query_name, url, config=None):
             self.query_name = query_name
             self.url = url
 
@@ -122,3 +124,25 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
     assert run.status == CrawlRun.Status.CANCELLED
     assert run.items_found_count == 1
     assert FoundItem.objects.filter(query=query).count() == 1
+
+
+def test_run_query_passes_its_spider_config_to_the_spider(installed_plugins) -> None:
+    received_configs = []
+
+    class _ConfiguredSpider(Spider):
+        name = "cars"
+        config_fields = (ConfigField(key="region", label="Region", required=True),)
+
+        def run(self, max_pages=None, should_stop=None):
+            received_configs.append(self.config)
+            return []
+
+    installed_plugins(spiders={"cars": _ConfiguredSpider})
+    query = Query.objects.create(
+        name="q1", spider_name="cars", url="https://example.com", spider_config={"region": "north"}
+    )
+
+    run = services.run_query(query)
+
+    assert run.status == CrawlRun.Status.SUCCESS
+    assert received_configs == [{"region": "north"}]

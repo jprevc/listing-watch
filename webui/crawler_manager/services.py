@@ -107,7 +107,7 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
 
     try:
         spider_cls = registry.installed().get_spider(query.spider_name)
-        crawled_items = spider_cls(query.name, query.url).run(
+        crawled_items = spider_cls(query.name, query.url, config=query.spider_config).run(
             max_pages=max_pages, should_stop=cancel_requested.is_set
         )
 

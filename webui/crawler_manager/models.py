@@ -30,6 +30,9 @@ class Query(models.Model):
     name = models.CharField(max_length=255, help_text="Query name, passed to the spider (e.g. used in messages).")
     spider_name = models.CharField(max_length=64, choices=available_spider_choices)
     url = models.URLField(max_length=2000)
+    spider_config = models.JSONField(
+        default=dict, blank=True, help_text="Values for the Config Fields the Spider declares, keyed by field key."
+    )
     schedule_mode = models.CharField(max_length=16, choices=ScheduleMode.choices, default=ScheduleMode.SIMPLE)
     interval_value = models.PositiveIntegerField(
         null=True, blank=True, help_text="Used when schedule_mode is 'simple'."

@@ -11,6 +11,11 @@
         <div class="form-section-body">
             {% include "crawler_manager/_form_field.html" with field=form.name %}
             {% include "crawler_manager/_form_field.html" with field=form.spider_name %}
+            {% for spider_name, fields in form.config_field_groups %}{% if fields %}
+            <div class="spider-config-fields" data-spider="{{ spider_name }}" {% if form.spider_name.value != spider_name %}hidden{% endif %}>
+                {% for field in fields %}{% include "crawler_manager/_form_field.html" %}{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
             {% include "crawler_manager/_form_field.html" with field=form.url %}
             {% include "crawler_manager/_form_field.html" with field=form.max_pages %}
             {% include "crawler_manager/_form_field.html" with field=form.is_active %}
@@ -114,6 +119,15 @@
 
     if (spiderSelect) spiderSelect.addEventListener("change", syncMessageFormatHelp);
     syncMessageFormatHelp();
+
+    function syncSpiderConfigFields() {
+        document.querySelectorAll(".spider-config-fields").forEach(function (div) {
+            div.hidden = !spiderSelect || div.dataset.spider !== spiderSelect.value;
+        });
+    }
+
+    if (spiderSelect) spiderSelect.addEventListener("change", syncSpiderConfigFields);
+    syncSpiderConfigFields();
 
     var scheduleRadios = document.querySelectorAll("#schedule-mode-choices input[name='schedule_mode']");
     var simpleFields = document.getElementById("schedule-simple-fields");

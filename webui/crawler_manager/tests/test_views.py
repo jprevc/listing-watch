@@ -6,6 +6,7 @@ from crawler_manager import scheduling
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 from listing_watch.config_field import ConfigField
 from listing_watch.notificators import Notificator
+from listing_watch.spiders import Spider
 
 pytestmark = pytest.mark.django_db
 
@@ -668,3 +669,109 @@ def test_run_history_list_only_shows_own_runs_for_non_staff(client, django_user_
     content = response.content.decode()
     assert "mine" in content
     assert "theirs" not in content
+
+
+class _ConfiguredSpider(Spider):
+    name = "cars"
+    config_fields = (
+        ConfigField(key="region", label="Region", required=True),
+        ConfigField(key="api_key", label="API key", secret=True),
+    )
+
+    def run(self, max_pages=None, should_stop=None):
+        return []
+
+
+class _PlainSpider(Spider):
+    name = "bikes"
+
+    def run(self, max_pages=None, should_stop=None):
+        return []
+
+
+def _query_data(spider_name: str = "cars", **config_values: str) -> dict[str, str]:
+    data = {
+        "name": "new_query",
+        "spider_name": spider_name,
+        "url": "https://example.com/search",
+        "schedule_mode": "manual",
+        "is_active": "on",
+        **_formset_management_data(),
+    }
+    data.update({f"{spider_name}__{key}": value for key, value in config_values.items()})
+    return data
+
+
+def test_query_form_renders_the_spiders_config_fields(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+
+    response = admin_client.get(reverse("query_create"))
+
+    content = response.content.decode()
+    assert "Region" in content
+    assert 'type="text" name="cars__region"' in content
+    assert 'type="password" name="cars__api_key"' in content
+
+
+def test_query_form_for_a_spider_without_config_fields_adds_nothing(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+
+    response = admin_client.get(reverse("query_create"))
+
+    assert 'class="spider-config-fields"' not in response.content.decode()
+
+
+def test_query_create_saves_spider_config_under_config_field_keys(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+
+    response = admin_client.post(reverse("query_create"), _query_data(region="north", api_key="s3cret"))
+
+    assert response.status_code == 302
+    assert Query.objects.get(name="new_query").spider_config == {"region": "north", "api_key": "s3cret"}
+
+
+def test_query_create_rejects_missing_required_spider_config_field(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+
+    response = admin_client.post(reverse("query_create"), _query_data(api_key="s3cret"))
+
+    assert response.status_code == 200
+    assert response.context["form"].errors == {"cars__region": ["Region is required for cars."]}
+    assert not Query.objects.filter(name="new_query").exists()
+
+
+def test_query_create_ignores_config_fields_of_a_spider_not_chosen(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+
+    response = admin_client.post(reverse("query_create"), {**_query_data("bikes"), "cars__api_key": "ignored"})
+
+    assert response.status_code == 302
+    assert Query.objects.get(name="new_query").spider_config == {}
+
+
+def test_query_edit_shows_stored_spider_config(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+    query = Query.objects.create(
+        name="q1", spider_name="cars", url="https://example.com", spider_config={"region": "north", "api_key": "s3cret"}
+    )
+
+    response = admin_client.get(reverse("query_edit", args=[query.pk]))
+
+    content = response.content.decode()
+    assert 'name="cars__region" value="north"' in content
+    assert 'name="cars__api_key" value="s3cret"' in content
+    assert '<div class="spider-config-fields" data-spider="cars" >' in content
+
+
+def test_query_edit_switching_spider_drops_the_old_spider_config(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider, "bikes": _PlainSpider})
+    query = Query.objects.create(
+        name="new_query", spider_name="cars", url="https://example.com", spider_config={"region": "north"}
+    )
+
+    response = admin_client.post(reverse("query_edit", args=[query.pk]), _query_data("bikes"))
+
+    assert response.status_code == 302
+    query.refresh_from_db()
+    assert query.spider_name == "bikes"
+    assert query.spider_config == {}

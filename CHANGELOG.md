@@ -1,5 +1,15 @@
 # Change Log
 
+## [4.0.0]
+### Removed
+- The Email, Pushover and ntfy Notificators. They now live in the
+  [`listing-watch-notificators`](https://github.com/jprevc/listing-watch-notificators) Plugin, which
+  registers them under the same names, so existing Notification Profiles keep working once it's
+  installed. The Docker image installs it.
+
+### Changed
+- Published on PyPI as `listing-watch` (previously `news-crawlers`).
+
 ## [2.0.0] - 2021-08-14
 ### Added
 - Support for Pushover notifications (https://pushover.net/)

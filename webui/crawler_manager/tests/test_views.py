@@ -369,24 +369,6 @@ def test_profile_list_hides_other_users_profiles_even_for_staff(admin_client, dj
     assert b"Theirs" not in response.content
 
 
-def test_profile_create_sets_owner_and_config(admin_client, django_user_model) -> None:
-    data = {"name": "My ntfy", "notificator_name": "ntfy", "ntfy__topic": "my-topic"}
-    response = admin_client.post(reverse("profile_create"), data)
-
-    assert response.status_code == 302
-    profile = NotificationProfile.objects.get(name="My ntfy")
-    assert profile.user == django_user_model.objects.get(username="admin")
-    assert profile.config == {"topic": "my-topic"}
-
-
-def test_profile_create_requires_type_specific_fields(admin_client) -> None:
-    data = {"name": "My ntfy", "notificator_name": "ntfy"}  # missing required "topic"
-    response = admin_client.post(reverse("profile_create"), data)
-
-    assert response.status_code == 200
-    assert not NotificationProfile.objects.filter(name="My ntfy").exists()
-
-
 def test_profile_edit_404s_for_non_owner(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
@@ -479,8 +461,8 @@ def test_profile_form_shows_only_the_chosen_notificators_fields(
     assert '<div class="notif-type-fields" data-notificator="smoke" hidden>' in content
 
 
-def test_profile_create_saves_config_under_config_field_keys(
-    admin_client, installed_plugins
+def test_profile_create_sets_owner_and_saves_config_under_config_field_keys(
+    admin_client, django_user_model, installed_plugins
 ) -> None:
     installed_plugins(notificators={"pigeon": _ConfiguredNotificator, "smoke": _OtherConfiguredNotificator})
 
@@ -491,6 +473,7 @@ def test_profile_create_saves_config_under_config_field_keys(
 
     assert response.status_code == 302
     profile = NotificationProfile.objects.get(name="Carrier")
+    assert profile.user == django_user_model.objects.get(username="admin")
     assert profile.config == {"roost": "loft", "api_key": "s3cret", "speed": "slow"}
 
 
@@ -529,10 +512,13 @@ def test_profile_edit_shows_stored_config_including_secrets(
     assert 'name="pigeon__api_key" value="s3cret"' in content
 
 
-def test_existing_ntfy_profile_saves_without_changing_its_config_keys(admin_client, django_user_model) -> None:
+def test_existing_profile_saves_without_changing_its_config_keys(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
     user = django_user_model.objects.get(username="admin")
-    config = {"topic": "t", "server": "https://ntfy.example", "token": "tk"}
-    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config=config)
+    config = {"roost": "loft", "api_key": "s3cret", "speed": "slow"}
+    profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="pigeon", config=config)
     form = admin_client.get(reverse("profile_edit", args=[profile.pk])).context["form"]
 
     data = {f.name: f.value() for f in form if f.value() not in (None, False)}
@@ -617,18 +603,21 @@ def test_profile_test_requires_post(admin_client, django_user_model) -> None:
     assert response.status_code == 405
 
 
-def test_setting_a_profile_as_default_via_edit_clears_the_previous_default(admin_client, django_user_model) -> None:
+def test_setting_a_profile_as_default_via_edit_clears_the_previous_default(
+    admin_client, django_user_model, installed_plugins
+) -> None:
+    installed_plugins(notificators={"pigeon": _ConfiguredNotificator})
     user = django_user_model.objects.get(username="admin")
     first = NotificationProfile.objects.create(
-        user=user, name="First", notificator_name="ntfy", config={"topic": "t"}, is_default=True
+        user=user, name="First", notificator_name="pigeon", config={"roost": "loft"}, is_default=True
     )
     second = NotificationProfile.objects.create(
-        user=user, name="Second", notificator_name="ntfy", config={"topic": "t2"}
+        user=user, name="Second", notificator_name="pigeon", config={"roost": "barn"}
     )
 
     response = admin_client.post(
         reverse("profile_edit", args=[second.pk]),
-        {"name": "Second", "notificator_name": "ntfy", "ntfy__topic": "t2", "is_default": "on"},
+        {"name": "Second", "notificator_name": "pigeon", "pigeon__roost": "barn", "is_default": "on"},
     )
 
     assert response.status_code == 302

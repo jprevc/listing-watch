@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "listing-watch"
-version = "3.2.0"
+version = "4.0.0"
 description = "An extensible python library to create web crawlers which watch listings/classifieds and alert users of new items."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -43,15 +43,11 @@ Homepage = "https://github.com/jprevc/listing-watch"
 Repository = "https://github.com/jprevc/listing-watch"
 Changelog = "https://github.com/jprevc/listing-watch/blob/master/CHANGELOG.md"
 
-# The Core's own Spiders and Notificators register exactly as an external Plugin's would.
+# Until they move to their own Plugin, the Core's Spiders register exactly as an external Plugin's would.
+# Notificators come from Plugins.
 [project.entry-points."listing_watch.spiders"]
 example = "listing_watch.spiders:exampleSpider"
 example = "listing_watch.spiders:exampleSpider"
-
-[project.entry-points."listing_watch.notificators"]
-email = "listing_watch.notificators:EmailNotificator"
-pushover = "listing_watch.notificators:PushoverNotificator"
-ntfy = "listing_watch.notificators:NtfyNotificator"
 
 [project.optional-dependencies]
 dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
@@ -66,6 +62,10 @@ default-groups = ["dev"]
 
 [tool.setuptools]
 packages = [ "listing_watch",]
+
+# Ships the type hints, so Plugins can type-check against the Plugin interface.
+[tool.setuptools.package-data]
+listing_watch = ["py.typed"]
 
 [tool.black]
 line-length = 120

@@ -3,8 +3,8 @@ The plugin registry: the one place that discovers Spiders and Notificators.
 
 Plugins register their Spiders and Notificators through the `listing_watch.spiders` and
 `listing_watch.notificators` entry-point groups. The entry-point name is the Spider's or
-Notificator's name, and its value is the class. The Core's own Spiders and Notificators register
-the same way, through this package's metadata.
+Notificator's name, and its value is the class. Until they move to their own Plugin, the Core's
+Spiders register the same way, through this package's metadata.
 """
 from __future__ import annotations
 

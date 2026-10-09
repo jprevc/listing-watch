@@ -28,6 +28,7 @@ def send_notifications(
     :param query_name: Name of the Query the items were found by (used in the notification
                        subject/title, and as each item's `query`).
     :param new_data: List of new items to send.
+    :raises RuntimeError: If any notificator failed, naming each failure; the others still send.
     """
     # The core, not the Spider, names the Query: an Item only has to carry a title and a URL, but
     # Notificators group items under a "Query: ..." header read from each item's `query`.

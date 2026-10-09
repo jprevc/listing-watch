@@ -3,6 +3,8 @@ Tests for the plugin registry, using fake entry-point objects in place of instal
 """
 from __future__ import annotations
 
+import importlib.metadata
+
 import pytest
 
 from listing_watch import registry
@@ -108,10 +110,12 @@ def test_looking_up_a_missing_notificator_raises_not_installed() -> None:
     assert "pigeon" in str(exc_info.value)
 
 
-def test_installed_package_registers_its_own_spiders_and_notificators() -> None:
-    # The Core's own Spiders and Notificators are found through the package's entry points,
-    # exactly like an external Plugin's would be.
-    plugins = registry.Registry.from_entry_points()
+def test_installed_package_registers_its_own_spiders_but_no_notificators() -> None:
+    # The Core's own Spiders are found through the package's entry points, exactly like an external
+    # Plugin's would be. Notificators come only from Plugins (e.g. `listing-watch-notificators`).
+    plugins = registry.Registry.from_entry_points(
+        ep for ep in importlib.metadata.entry_points() if ep.dist and ep.dist.name == "listing-watch"
+    )
 
     assert plugins.spider_names() == ["example", "example"]
-    assert plugins.notificator_names() == ["email", "ntfy", "pushover"]
+    assert plugins.notificator_names() == []

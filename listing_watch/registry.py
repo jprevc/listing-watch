@@ -36,7 +36,7 @@ class DuplicatePluginNameError(RuntimeError):
     """Two installed Plugins register the same name in one entry-point group."""
 
 
-class _EntryPoint(Protocol):
+class PluginEntryPoint(Protocol):
     # The subset of `importlib.metadata.EntryPoint` the registry relies on.
     @property
     def name(self) -> str: ...
@@ -53,13 +53,13 @@ class _EntryPoint(Protocol):
     def load(self) -> Any: ...
 
 
-def _plugin_label(entry_point: _EntryPoint) -> str:
+def _plugin_label(entry_point: PluginEntryPoint) -> str:
     dist_name = getattr(entry_point.dist, "name", None) or "unknown Plugin"
     return f"{dist_name} ({entry_point.value})"
 
 
-def _load_group(entry_points: Iterable[_EntryPoint], group: str, kind: str) -> dict[str, Any]:
-    by_name: dict[str, _EntryPoint] = {}
+def _load_group(entry_points: Iterable[PluginEntryPoint], group: str, kind: str) -> dict[str, Any]:
+    by_name: dict[str, PluginEntryPoint] = {}
     for entry_point in entry_points:
         if entry_point.group != group:
             continue
@@ -81,7 +81,7 @@ class Registry:
     notificators: Mapping[str, type[Notificator]]
 
     @classmethod
-    def from_entry_points(cls, entry_points: Iterable[_EntryPoint] | None = None) -> Registry:
+    def from_entry_points(cls, entry_points: Iterable[PluginEntryPoint] | None = None) -> Registry:
         """
         Builds a registry from entry points (by default, every installed package's).
 

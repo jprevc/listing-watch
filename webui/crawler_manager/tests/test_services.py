@@ -160,7 +160,7 @@ def test_run_query_reports_an_unavailable_profile_as_a_delivery_failure_and_stil
         def send_text(self, subject: str, message: str) -> None:
             sent_subjects.append(subject)
 
-    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "query": "test_query"}]
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
     installed_plugins(spiders={"example": _FakeSpider}, notificators={"pigeon": _PigeonNotificator})
     unavailable = NotificationProfile.objects.create(name="old smoke", notificator_name="smoke", config={})
     available = NotificationProfile.objects.create(name="carrier", notificator_name="pigeon", config={})

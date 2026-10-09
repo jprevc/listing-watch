@@ -15,6 +15,13 @@ from listing_watch.config_field import ConfigField
 NotificatorItem = dict[str, str]
 
 
+class _EmptyForMissing(dict[str, str]):
+    """An item's fields for `str.format_map`, where a field the item lacks renders as empty."""
+
+    def __missing__(self, key: str) -> str:
+        return ""
+
+
 class Notificator(ABC):
     """
     Notificator base class. This class is meant to be subclassed for each implementation of different notification
@@ -51,11 +58,12 @@ class Notificator(ABC):
         `send_items`.
 
         :param item: Item to render.
-        :param item_format: Format, with which the item's body will be created.
+        :param item_format: Format, with which the item's body will be created. A field the item
+            doesn't have renders as empty: an Item only has to carry a title and a URL.
         :param include_header: Whether to prepend a "Query: <name>" header line.
         :return: Rendered item, ready to be joined with other items via a blank line.
         """
-        body = item_format.format(**item).rstrip()
+        body = item_format.format_map(_EmptyForMissing(item)).rstrip()
         if include_header:
             return f"Query: {item['query']}\n\n{body}"
         return body

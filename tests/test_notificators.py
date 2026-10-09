@@ -227,3 +227,18 @@ def test_notificators_declare_their_config_fields(
     """
     declared = [(f.key, f.label, f.required, f.secret, f.default) for f in notificator.config_fields]
     assert declared == expected
+
+
+def test_send_items_renders_a_field_the_item_lacks_as_empty(
+    email_notificator: notificators.EmailNotificator, smtp_mock: SmtpMock
+) -> None:
+    """
+    An Item only has to carry a title and a URL, so a message format naming another field (e.g.
+    the default format's `{price}`) must still render when the item doesn't have it.
+    """
+    items = [{"query": "q1", "title": "a", "url": "https://example.com/a"}]
+    email_notificator.send_items("subject", items, "Title: {title}\nURL: {url}\nPrice: {price}")
+
+    assert smtp_mock.simulated_messages[0] == (
+        b"Subject: subject\n\nQuery: q1\n\nTitle: a\nURL: https://example.com/a\nPrice:"
+    )

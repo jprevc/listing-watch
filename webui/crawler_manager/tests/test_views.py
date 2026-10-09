@@ -910,3 +910,15 @@ def test_profile_test_on_an_unavailable_profile_says_the_plugin_is_not_installed
         "Can't send a test through 'Old': No installed Plugin provides a Notificator named 'smoke'. "
         "Install a Plugin that provides it to use this profile again."
     )
+
+
+def test_query_form_lists_the_guaranteed_item_fields_for_a_spider_that_declares_none(
+    admin_client, installed_plugins
+) -> None:
+    installed_plugins(spiders={"bikes": _PlainSpider})
+
+    response = admin_client.get(reverse("query_create"))
+
+    assert '<script id="spider-item-fields" type="application/json">{"bikes": ["query", "title", "url"]}</script>' in (
+        response.content.decode()
+    )

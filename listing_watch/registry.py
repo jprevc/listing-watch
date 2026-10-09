@@ -14,7 +14,7 @@ from importlib.metadata import entry_points as installed_entry_points
 from typing import Any, Iterable, Mapping, Protocol
 
 from listing_watch.notificators import Notificator
-from listing_watch.spiders import Spider
+from listing_watch.spiders import GUARANTEED_ITEM_FIELDS, Spider
 
 SPIDERS_GROUP = "listing_watch.spiders"
 NOTIFICATORS_GROUP = "listing_watch.notificators"
@@ -114,8 +114,14 @@ class Registry:
         return sorted(self.notificators)
 
     def spider_item_fields(self) -> dict[str, list[str]]:
-        """Maps each Spider's name to the Item fields it declares, for use in message formats."""
-        return {name: list(spider.item_fields) for name, spider in self.spiders.items()}
+        """
+        Maps each Spider's name to the Item fields available in its message formats: the fields
+        every Item has, then whatever else the Spider declares.
+        """
+        return {
+            name: list(dict.fromkeys([*GUARANTEED_ITEM_FIELDS, *spider.item_fields]))
+            for name, spider in self.spiders.items()
+        }
 
 
 @functools.cache

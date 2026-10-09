@@ -78,12 +78,19 @@ def test_one_plugin_can_provide_several_spiders_and_notificators() -> None:
     assert plugins.get_notificator("pigeon") is _PigeonNotificator
 
 
-def test_spider_item_fields_are_keyed_by_spider_name() -> None:
+def test_spider_item_fields_are_keyed_by_spider_name_and_always_include_the_guaranteed_fields() -> None:
+    """
+    Every Item has `query` (supplied by the core), `title` and `url`, so they're listed even for a
+    Spider that doesn't declare them, ahead of whatever else it declares.
+    """
     plugins = registry.Registry.from_entry_points(
         [_spider_ep("cars", _CarsSpider), _spider_ep("bikes", _BikesSpider)]
     )
 
-    assert plugins.spider_item_fields() == {"cars": ["title", "url", "mileage"], "bikes": []}
+    assert plugins.spider_item_fields() == {
+        "cars": ["query", "title", "url", "mileage"],
+        "bikes": ["query", "title", "url"],
+    }
 
 
 def test_entry_points_from_other_groups_are_ignored() -> None:

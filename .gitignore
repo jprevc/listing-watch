@@ -10,6 +10,6 @@
 /coverage.xml
 /webui/.coverage
 /webui/coverage.xml
-/webui/db.sqlite3
+/webui/db.sqlite3*
 /webui/staticfiles/**
 /data/**

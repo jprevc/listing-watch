@@ -8,7 +8,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(name="query")
 def query_fixture() -> Query:
-    return Query.objects.create(name="test_query", spider_name="example", url="https://example.com")
+    return Query.objects.create(name="test_query", spider_name="cars", url="https://example.com")
 
 
 @pytest.fixture(name="user")
@@ -17,7 +17,7 @@ def user_fixture(django_user_model):
 
 
 def test_query_str(query: Query) -> None:
-    assert str(query) == "example/test_query"
+    assert str(query) == "cars/test_query"
 
 
 def test_query_save_derives_cron_schedule_in_simple_mode(query: Query) -> None:

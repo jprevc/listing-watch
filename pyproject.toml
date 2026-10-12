@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "listing-watch"
-version = "4.0.0"
+version = "4.1.0"
 description = "An extensible python library to create web crawlers which watch listings/classifieds and alert users of new items."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -14,10 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "beautifulsoup4>=4.9",
-    "requests>=2.25",
     "importlib_metadata>=1.0",
-    "playwright>=1.45",
 ]
 [[project.authors]]
 name = "Jost Prevc"
@@ -43,18 +40,12 @@ Homepage = "https://github.com/jprevc/listing-watch"
 Repository = "https://github.com/jprevc/listing-watch"
 Changelog = "https://github.com/jprevc/listing-watch/blob/master/CHANGELOG.md"
 
-# Until they move to their own Plugin, the Core's Spiders register exactly as an external Plugin's would.
-# Notificators come from Plugins.
-[project.entry-points."listing_watch.spiders"]
-example = "listing_watch.spiders:exampleSpider"
-example = "listing_watch.spiders:exampleSpider"
-
 [project.optional-dependencies]
-dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]",]
 test = [ "pytest", "pytest-cov", "pytest-django",]
 
 [dependency-groups]
-dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]", "types-beautifulsoup4", "types-requests",]
+dev = [ "pytest", "pytest-cov", "pytest-django", "pylint", "pre-commit", "black[d]", "mypy", "django-stubs[compatible-mypy]",]
 web = [ "django>=5.0,<6", "apscheduler>=3.10,<4", "django-apscheduler>=0.7", "django-htmx>=1.17", "gunicorn>=22", "whitenoise>=6.7",]
 
 [tool.uv]
@@ -73,4 +64,5 @@ line-length = 120
 [tool.pytest.ini_options]
 addopts = "--cov=listing_watch --cov-report=xml --cov-report=term"
 DJANGO_SETTINGS_MODULE = "webui.settings"
+testpaths = ["tests", "webui"]
 pythonpath = ["webui"]

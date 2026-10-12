@@ -1,5 +1,13 @@
 # Change Log
 
+## [4.1.0]
+### Removed
+- The built-in Spiders. Spiders now come only from Plugins, like Notificators, and the Core no longer
+  depends on `requests`, `beautifulsoup4` or `playwright`. Queries whose Spider isn't installed are
+  kept and shown as Unavailable.
+- The browser and Xvfb setup from the Docker image. An image that needs a browser for its Spiders
+  is built `FROM` the Core image.
+
 ## [4.0.0]
 ### Removed
 - The Email, Pushover and ntfy Notificators. They now live in the

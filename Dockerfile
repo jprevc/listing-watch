@@ -16,15 +16,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 # already satisfied by the copy synced above.
 RUN uv pip install --no-cache "listing-watch-notificators>=1,<2"
 
-# exampleSpider drives a real Chromium (via Playwright) instead of plain HTTP requests -- example.com's
-# anti-bot protection requires actual JS execution/fingerprinting that no amount of header spoofing
-# on a plain request can satisfy. --with-deps installs Chromium's OS-level shared libraries too
-# (fonts, codecs, etc.), needed since this is a slim base image. xvfb provides the virtual display
-# Chromium renders into: it's launched headed (not headless), since even Chromium's modern
-# headless mode still leaks a few detectable differences from a real, on-screen browser.
-RUN playwright install --with-deps chromium \
-    && apt-get install -y --no-install-recommends xvfb \
-    && rm -rf /var/lib/apt/lists/*
+# The Core has no Spiders either, and so no browser. To crawl, build an image `FROM` this one that
+# installs a Spider Plugin, plus whatever its Spiders need.
 
 EXPOSE 8000
 

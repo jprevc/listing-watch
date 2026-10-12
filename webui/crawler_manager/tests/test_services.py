@@ -24,12 +24,12 @@ class _FakeSpider:
 
 @pytest.fixture(name="query")
 def query_fixture() -> Query:
-    return Query.objects.create(name="test_query", spider_name="example", url="https://example.com")
+    return Query.objects.create(name="test_query", spider_name="cars", url="https://example.com")
 
 
 def test_run_query_persists_items_and_creates_successful_run(query: Query, monkeypatch, installed_plugins) -> None:
     _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
-    installed_plugins(spiders={"example": _FakeSpider})
+    installed_plugins(spiders={"cars": _FakeSpider})
 
     sent = []
     monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: sent.append(args))
@@ -50,7 +50,7 @@ def test_run_query_persists_items_and_creates_successful_run(query: Query, monke
 
 def test_run_query_dedups_on_second_run(query: Query, monkeypatch, installed_plugins) -> None:
     _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
-    installed_plugins(spiders={"example": _FakeSpider})
+    installed_plugins(spiders={"cars": _FakeSpider})
     monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
 
     first_run = services.run_query(query)
@@ -73,7 +73,7 @@ def test_run_query_marks_failed_on_exception(query: Query, installed_plugins) ->
         def run(self, max_pages=None, should_stop=None):
             raise RuntimeError("site layout changed")
 
-    installed_plugins(spiders={"example": _ExplodingSpider})
+    installed_plugins(spiders={"cars": _ExplodingSpider})
 
     run = services.run_query(query)
 
@@ -87,7 +87,7 @@ def test_run_query_marks_failed_when_spider_is_not_installed(query: Query, insta
     run = services.run_query(query)
 
     assert run.status == CrawlRun.Status.FAILED
-    assert run.error_message == "No installed Plugin provides a Spider named 'example'."
+    assert run.error_message == "No installed Plugin provides a Spider named 'cars'."
 
 
 @pytest.mark.django_db(transaction=True)
@@ -96,7 +96,7 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
     # cancel_requested on the in-progress CrawlRun (mimicking the view) before returning whatever
     # it had already collected. run_query polls that flag on a separate thread (see services.py's
     # comment on why -- Playwright's sync API makes ORM access from the spider's own call stack
-    # unsafe), so the fake spider has to wait it out like the real exampleSpider pagination loop
+    # unsafe), so the fake spider has to wait it out like a real paginating spider's loop
     # does, rather than asserting `should_stop()` flips true immediately.
     # `transaction=True` is required here (not the module-level plain `django_db`): the poller
     # thread reads through its own DB connection, which only sees committed rows -- a plain
@@ -117,7 +117,7 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
             pytest.fail("should_stop() never became true")
             return []  # pragma: no cover - unreachable, satisfies type checkers
 
-    installed_plugins(spiders={"example": _CancellingSpider})
+    installed_plugins(spiders={"cars": _CancellingSpider})
     monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
 
     run = services.run_query(query)
@@ -161,7 +161,7 @@ def test_run_query_reports_an_unavailable_profile_as_a_delivery_failure_and_stil
             sent_subjects.append(subject)
 
     _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
-    installed_plugins(spiders={"example": _FakeSpider}, notificators={"pigeon": _PigeonNotificator})
+    installed_plugins(spiders={"cars": _FakeSpider}, notificators={"pigeon": _PigeonNotificator})
     unavailable = NotificationProfile.objects.create(name="old smoke", notificator_name="smoke", config={})
     available = NotificationProfile.objects.create(name="carrier", notificator_name="pigeon", config={})
     QueryNotificationConfig.objects.create(query=query, profile=unavailable, message_body_format="{title}")

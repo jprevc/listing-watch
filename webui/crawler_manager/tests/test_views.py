@@ -28,16 +28,17 @@ def test_query_list_requires_login(client) -> None:
 
 
 def test_query_list_shows_queries(admin_client) -> None:
-    Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
     response = admin_client.get(reverse("query_list"))
     assert response.status_code == 200
     assert b"q1" in response.content
 
 
-def test_query_create_creates_query(admin_client) -> None:
+def test_query_create_creates_query(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _PlainSpider})
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "manual",
         "is_active": "on",
@@ -49,10 +50,11 @@ def test_query_create_creates_query(admin_client) -> None:
     assert Query.objects.filter(name="new_query").exists()
 
 
-def test_query_create_sets_owner_to_current_user(admin_client, django_user_model) -> None:
+def test_query_create_sets_owner_to_current_user(admin_client, django_user_model, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _PlainSpider})
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "manual",
         "is_active": "on",
@@ -64,10 +66,11 @@ def test_query_create_sets_owner_to_current_user(admin_client, django_user_model
     assert query.user == django_user_model.objects.get(username="admin")
 
 
-def test_query_create_simple_mode_derives_cron_schedule(admin_client) -> None:
+def test_query_create_simple_mode_derives_cron_schedule(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _PlainSpider})
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "simple",
         "interval_value": "15",
@@ -85,7 +88,7 @@ def test_query_create_simple_mode_derives_cron_schedule(admin_client) -> None:
 def test_query_create_simple_mode_rejects_value_below_floor(admin_client) -> None:
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "simple",
         "interval_value": "1",
@@ -102,7 +105,7 @@ def test_query_create_simple_mode_rejects_value_below_floor(admin_client) -> Non
 def test_query_create_advanced_mode_requires_cron_schedule(admin_client) -> None:
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "advanced",
         "cron_schedule": "",
@@ -118,8 +121,8 @@ def test_query_create_advanced_mode_requires_cron_schedule(admin_client) -> None
 def test_query_list_only_shows_own_queries_for_non_staff(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
-    Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
-    Query.objects.create(name="not_mine", spider_name="example", url="https://example.com", user=other)
+    Query.objects.create(name="mine", spider_name="cars", url="https://example.com", user=owner)
+    Query.objects.create(name="not_mine", spider_name="cars", url="https://example.com", user=other)
 
     client.force_login(owner)
     response = client.get(reverse("query_list"))
@@ -130,7 +133,7 @@ def test_query_list_only_shows_own_queries_for_non_staff(client, django_user_mod
 
 def test_query_list_shows_all_queries_for_staff(admin_client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
-    Query.objects.create(name="someone_elses", spider_name="example", url="https://example.com", user=owner)
+    Query.objects.create(name="someone_elses", spider_name="cars", url="https://example.com", user=owner)
 
     response = admin_client.get(reverse("query_list"))
 
@@ -140,7 +143,7 @@ def test_query_list_shows_all_queries_for_staff(admin_client, django_user_model)
 def test_query_edit_404s_for_non_owner(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=owner)
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com", user=owner)
 
     client.force_login(other)
     response = client.get(reverse("query_edit", args=[query.pk]))
@@ -151,7 +154,7 @@ def test_query_edit_404s_for_non_owner(client, django_user_model) -> None:
 def test_query_delete_404s_for_non_owner(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=owner)
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com", user=owner)
 
     client.force_login(other)
     response = client.post(reverse("query_delete", args=[query.pk]))
@@ -161,7 +164,7 @@ def test_query_delete_404s_for_non_owner(client, django_user_model) -> None:
 
 
 def test_query_run_now_triggers_manual_run(admin_client, monkeypatch) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
 
     calls = []
     monkeypatch.setattr(scheduling, "trigger_manual_run", lambda q: calls.append(q.id))
@@ -173,7 +176,7 @@ def test_query_run_now_triggers_manual_run(admin_client, monkeypatch) -> None:
 
 
 def test_query_stop_run_sets_cancel_requested_on_running_run(admin_client) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
     run = CrawlRun.objects.create(
         query=query, query_name=query.name, spider_name=query.spider_name,
         trigger=CrawlRun.Trigger.MANUAL, status=CrawlRun.Status.RUNNING,
@@ -187,7 +190,7 @@ def test_query_stop_run_sets_cancel_requested_on_running_run(admin_client) -> No
 
 
 def test_query_stop_run_is_a_noop_without_a_running_run(admin_client) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
     run = CrawlRun.objects.create(
         query=query, query_name=query.name, spider_name=query.spider_name,
         trigger=CrawlRun.Trigger.MANUAL, status=CrawlRun.Status.SUCCESS,
@@ -201,7 +204,7 @@ def test_query_stop_run_is_a_noop_without_a_running_run(admin_client) -> None:
 
 
 def test_query_delete_removes_query(admin_client) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
 
     response = admin_client.post(reverse("query_delete", args=[query.pk]))
 
@@ -225,7 +228,7 @@ def _make_item(
 
 
 def test_found_item_list_run_kind_new_shows_only_items_created_by_that_run(admin_client) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
     run = CrawlRun.objects.create(query=query, query_name=query.name, spider_name=query.spider_name, trigger=CrawlRun.Trigger.MANUAL)
     older_run = CrawlRun.objects.create(query=query, query_name=query.name, spider_name=query.spider_name, trigger=CrawlRun.Trigger.MANUAL)
     new_item = _make_item(query, run=run, last_seen_run=run, suffix="new")
@@ -239,7 +242,7 @@ def test_found_item_list_run_kind_new_shows_only_items_created_by_that_run(admin
 
 
 def test_found_item_list_run_kind_found_shows_new_and_reencountered_items(admin_client) -> None:
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com")
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
     run = CrawlRun.objects.create(query=query, query_name=query.name, spider_name=query.spider_name, trigger=CrawlRun.Trigger.MANUAL)
     older_run = CrawlRun.objects.create(query=query, query_name=query.name, spider_name=query.spider_name, trigger=CrawlRun.Trigger.MANUAL)
     new_item = _make_item(query, run=run, last_seen_run=run, suffix="new")
@@ -257,8 +260,8 @@ def test_found_item_list_run_kind_found_shows_new_and_reencountered_items(admin_
 def test_found_item_list_only_shows_own_items_for_non_staff(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
-    my_query = Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
-    their_query = Query.objects.create(name="theirs", spider_name="example", url="https://example.com", user=other)
+    my_query = Query.objects.create(name="mine", spider_name="cars", url="https://example.com", user=owner)
+    their_query = Query.objects.create(name="theirs", spider_name="cars", url="https://example.com", user=other)
     my_item = FoundItem.objects.create(
         query=my_query, user=owner, query_name=my_query.name, spider_name=my_query.spider_name,
         content_hash="hash-mine", payload={}, title="my-item",
@@ -276,7 +279,8 @@ def test_found_item_list_only_shows_own_items_for_non_staff(client, django_user_
     assert their_item.title not in content
 
 
-def test_query_create_attaches_selected_profile(admin_client, django_user_model) -> None:
+def test_query_create_attaches_selected_profile(admin_client, django_user_model, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _PlainSpider})
     user = django_user_model.objects.get(username="admin")
     profile = NotificationProfile.objects.create(
         user=user, name="My ntfy", notificator_name="ntfy", config={"topic": "t"}
@@ -284,7 +288,7 @@ def test_query_create_attaches_selected_profile(admin_client, django_user_model)
 
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "manual",
         "is_active": "on",
@@ -310,7 +314,7 @@ def test_query_create_rejects_another_users_profile(admin_client, django_user_mo
 
     data = {
         "name": "new_query",
-        "spider_name": "example",
+        "spider_name": "cars",
         "url": "https://example.com/search",
         "schedule_mode": "manual",
         "is_active": "on",
@@ -395,7 +399,7 @@ def test_profile_delete_removes_unused_profile(admin_client, django_user_model) 
 def test_profile_delete_blocked_when_attached_to_a_query(admin_client, django_user_model) -> None:
     user = django_user_model.objects.get(username="admin")
     profile = NotificationProfile.objects.create(user=user, name="Mine", notificator_name="ntfy", config={"topic": "t"})
-    query = Query.objects.create(name="q1", spider_name="example", url="https://example.com", user=user)
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com", user=user)
     QueryNotificationConfig.objects.create(query=query, profile=profile, message_body_format="{title}")
 
     response = admin_client.post(reverse("profile_delete", args=[profile.pk]))
@@ -643,8 +647,8 @@ def test_profile_options_json_only_lists_own_profiles(client, django_user_model)
 def test_run_history_list_only_shows_own_runs_for_non_staff(client, django_user_model) -> None:
     owner = django_user_model.objects.create_user(username="owner", password="pw")
     other = django_user_model.objects.create_user(username="other", password="pw")
-    my_query = Query.objects.create(name="mine", spider_name="example", url="https://example.com", user=owner)
-    their_query = Query.objects.create(name="theirs", spider_name="example", url="https://example.com", user=other)
+    my_query = Query.objects.create(name="mine", spider_name="cars", url="https://example.com", user=owner)
+    their_query = Query.objects.create(name="theirs", spider_name="cars", url="https://example.com", user=other)
     CrawlRun.objects.create(
         query=my_query, user=owner, query_name=my_query.name, spider_name=my_query.spider_name,
         trigger=CrawlRun.Trigger.MANUAL,

@@ -76,9 +76,10 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
         started_at=timezone.now(),
     )
     # `should_stop` (passed into the spider below) must never touch the Django ORM directly:
-    # exampleSpider calls it from inside `with sync_playwright()`, whose sync API drives its event
-    # loop via greenlets on the *calling* thread -- so `asyncio.get_running_loop()` succeeds there
-    # for the whole duration of that block, and any ORM access in that call stack raises
+    # a browser-driven Spider may call it from inside Playwright's `with sync_playwright()`, whose
+    # sync API drives its event loop via greenlets on the *calling* thread -- so
+    # `asyncio.get_running_loop()` succeeds there for the whole duration of that block, and any
+    # ORM access in that call stack raises
     # Django's SynchronousOnlyOperation ("You cannot call this from an async context"). So the
     # actual DB polling happens on a separate plain thread, and the spider only ever reads an
     # in-memory flag that thread sets.

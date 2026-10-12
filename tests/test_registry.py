@@ -110,12 +110,11 @@ def test_looking_up_a_missing_notificator_raises_not_installed() -> None:
     assert "pigeon" in str(exc_info.value)
 
 
-def test_installed_package_registers_its_own_spiders_but_no_notificators() -> None:
-    # The Core's own Spiders are found through the package's entry points, exactly like an external
-    # Plugin's would be. Notificators come only from Plugins (e.g. `listing-watch-notificators`).
+def test_installed_core_registers_no_spiders_or_notificators() -> None:
+    # Spiders and Notificators come only from Plugins (e.g. `listing-watch-notificators`).
     plugins = registry.Registry.from_entry_points(
         ep for ep in importlib.metadata.entry_points() if ep.dist and ep.dist.name == "listing-watch"
     )
 
-    assert plugins.spider_names() == ["example", "example"]
+    assert plugins.spider_names() == []
     assert plugins.notificator_names() == []

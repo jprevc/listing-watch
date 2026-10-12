@@ -16,22 +16,22 @@ Listing Watch crawls configured listings/classifieds sites (e.g. car listings, g
 
 ## Positioning
 
-An extensible, self-hosted crawler framework: sites to watch, schedules, and notification channels are all configured through a web UI and stored in a database — no config files or legacy JSON cache to hand-edit. New source sites are added as spiders (`listing_watch/spiders.py`) rather than requiring a different tool per site.
+An extensible, self-hosted crawler framework: sites to watch, schedules, and notification channels are all configured through a web UI and stored in a database — no config files or legacy JSON cache to hand-edit. New source sites are added as Spiders, installed from Plugins, rather than requiring a different tool per site. The Core itself ships no Spiders and no Notificators.
 
 ## Operating Context
 
 - Self-hosted, home-server scale: Dockerized, expected to run continuously on a small/low-power box (not a hosted SaaS offering).
 - Django web UI (`webui/`) for configuration, backed by SQLite; a separate scheduler process (`runscheduler`) triggers spider runs on cron/interval schedules.
 - Multiple people share one deployment, each signed in with their own account.
-- Spiders run via requests/BeautifulSoup-style crawling for most sites; `exampleSpider` drives a real headless browser (Playwright/Chromium) because that target site's anti-bot protection requires JS execution.
+- Spiders come from Plugins. A Spider that needs a browser brings it in a derived Docker image built `FROM` the Core image; the Core image has none.
 
 ## Capabilities and Constraints
 
 - Per-user accounts: queries and notification profiles are private to the account that created them (a real, load-bearing feature, not incidental Django scaffolding) — each household member's setup stays separate on the shared instance.
 - Notification profiles are reusable and attachable to any of that user's queries; one profile per type can be marked default and is pre-selected (still removable) when adding a new query.
-- Three notification backends: Email (Gmail SMTP), Pushover, ntfy — each configured once as a profile, mixed/matched per query.
+- Three notification backends from the public Notificator Plugin: Email (Gmail SMTP), Pushover, ntfy — each configured once as a profile, mixed/matched per query.
 - Scheduling is per-query: simple interval or cron expression.
-- Adding a new source site means writing a new `Spider` subclass that yields item dicts whose keys match the placeholders used in a profile's `message_body_format`.
+- Adding a new source site means writing a new `Spider` subclass in a Plugin, returning Item dicts whose keys match the placeholders used in a profile's `message_body_format`.
 - Distributed as an installable package (PyPI: `listing-watch`) and as Docker images (Docker Hub), open source (MIT license) — published for other self-hosters to run, even though the design target is the maintainer's own household deployment.
 
 ## Brand Commitments

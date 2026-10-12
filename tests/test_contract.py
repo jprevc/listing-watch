@@ -22,12 +22,6 @@ def _violations(*entry_points: FakeEntryPoint) -> str:
     return str(exc_info.value)
 
 
-def test_in_repo_spiders_and_notificators_satisfy_the_contract() -> None:
-    # Checked exactly as an external Plugin would check itself. Moves to each Plugin repo when its
-    # Spiders or Notificators are extracted from the Core (see ADR-0001).
-    contract.check_plugin("listing-watch")
-
-
 def test_a_well_formed_plugin_passes() -> None:
     contract.check_plugin(
         [spider_entry_point("cars", FakeCarsSpider), notificator_entry_point("pigeon", FakePigeonNotificator)]

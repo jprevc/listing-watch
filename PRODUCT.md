@@ -29,7 +29,7 @@ An extensible, self-hosted crawler framework: sites to watch, schedules, and not
 
 - Per-user accounts: queries and notification profiles are private to the account that created them (a real, load-bearing feature, not incidental Django scaffolding) — each household member's setup stays separate on the shared instance.
 - Notification profiles are reusable and attachable to any of that user's queries; one profile per type can be marked default and is pre-selected (still removable) when adding a new query.
-- Three notification backends from the public Notificator Plugin: Email (Gmail SMTP), Pushover, ntfy — each configured once as a profile, mixed/matched per query.
+- Three Notificators from the public Notificator Plugin: Email (Gmail SMTP), Pushover, ntfy — each configured once as a profile, mixed/matched per query.
 - Scheduling is per-query: simple interval or cron expression.
 - Adding a new source site means writing a new `Spider` subclass in a Plugin, returning Item dicts whose keys match the placeholders used in a profile's `message_body_format`.
 - Distributed as an installable package (PyPI: `listing-watch`) and as Docker images (Docker Hub), open source (MIT license) — published for other self-hosters to run, even though the design target is the maintainer's own household deployment.

@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-VOLUME app/data
+VOLUME /app/data
 
 RUN pip install --no-cache-dir uv \
     && uv sync --frozen --no-dev --group web

@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
@@ -36,6 +36,20 @@ def _visible_items(request):
     if request.user.is_staff:
         return FoundItem.objects.all()
     return FoundItem.objects.filter(user=request.user)
+
+
+def _render_unavailable(request, template_name: str, form, context: dict) -> HttpResponse:
+    """
+    The edit page of an Unavailable Query or Notification Profile (`form`'s instance): the form is
+    read-only (see ConfigFieldsMixin), with the reason shown, and nothing is ever saved -- its stored
+    config belongs to a component that isn't installed. A POST gets 409 Conflict.
+    """
+    return render(
+        request,
+        template_name,
+        {"form": form, **context, "unavailable_reason": form.instance.unavailable_reason},
+        status=409 if request.method == "POST" else 200,
+    )
 
 
 def _visible_profiles(request):
@@ -106,25 +120,16 @@ def query_create(request):
 @require_http_methods(["GET", "POST"])
 def query_edit(request, pk):
     query = get_object_or_404(_visible_queries(request), pk=pk)
-    unavailable_reason = query.unavailable_reason
-    if unavailable_reason:
-        # Shown read-only, and never saved: saving would need a Spider that isn't installed.
-        form = QueryForm(instance=query)
+    if query.unavailable_reason:
         formset = QueryNotificationConfigFormSet(instance=query, form_kwargs={"user": request.user})
         for notification_form in formset:
             for field in notification_form.fields.values():
                 field.disabled = True
-        return render(
+        return _render_unavailable(
             request,
             "crawler_manager/query_form.html",
-            {
-                "form": form,
-                "formset": formset,
-                "query": query,
-                "spider_item_fields": spider_item_fields(),
-                "unavailable_reason": unavailable_reason,
-            },
-            status=409 if request.method == "POST" else 200,
+            QueryForm(instance=query),
+            {"formset": formset, "query": query, "spider_item_fields": spider_item_fields()},
         )
     if request.method == "POST":
         form = QueryForm(request.POST, instance=query)
@@ -251,18 +256,12 @@ def profile_create(request):
 @require_http_methods(["GET", "POST"])
 def profile_edit(request, pk):
     profile = get_object_or_404(_visible_profiles(request), pk=pk)
-    unavailable_reason = profile.unavailable_reason
-    if unavailable_reason:
-        # Shown read-only, and never saved: its stored config belongs to a Notificator that isn't installed.
-        return render(
+    if profile.unavailable_reason:
+        return _render_unavailable(
             request,
             "crawler_manager/profile_form.html",
-            {
-                "form": NotificationProfileForm(instance=profile),
-                "profile": profile,
-                "unavailable_reason": unavailable_reason,
-            },
-            status=409 if request.method == "POST" else 200,
+            NotificationProfileForm(instance=profile),
+            {"profile": profile},
         )
     if request.method == "POST":
         form = NotificationProfileForm(request.POST, instance=profile)

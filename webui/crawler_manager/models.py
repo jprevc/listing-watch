@@ -145,7 +145,8 @@ class NotificationProfile(models.Model):
     def unavailable_reason(self) -> str:
         """
         Why this Profile is Unavailable (no installed Plugin provides its Notificator), or "" if it isn't.
-        An Unavailable Profile is kept, with its config, but can't be edited or tested, and sending through it fails.
+        An Unavailable Profile is kept, with its config, but can't be edited or tested, and it's skipped when
+        sending: its Deliveries stay pending (see ADR-0002).
         """
         return notificator_unavailable_reason(self.notificator_name)
 

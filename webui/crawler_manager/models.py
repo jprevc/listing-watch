@@ -285,6 +285,10 @@ class Delivery(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    # Set while a run is sending this pending Delivery, so an overlapping run of the Query leaves it
+    # alone instead of sending it a second time.
+    claim = models.UUIDField(null=True, blank=True, editable=False)
+    claimed_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         unique_together = [("item", "profile")]

@@ -7,7 +7,6 @@ from django.forms import inlineformset_factory
 
 from crawler_manager import schedule_utils
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
-from crawler_manager.registry import available_notificator_choices, available_spider_choices
 from listing_watch import registry
 from listing_watch.config_field import ConfigField
 
@@ -34,10 +33,31 @@ class ConfigFieldsMixin:
     Renders, validates and collects the Config Fields of whichever installed Spider or Notificator
     the form's `component_field` (e.g. `spider_name`) chooses, stored as a dict in `config_attr` on
     the model instance.
+
+    A saved instance that is Unavailable (its component isn't installed) is shown read-only: every
+    field is disabled, and its missing component stays selected.
     """
 
     component_field: str
     config_attr: str
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._add_config_fields(self._installed_components())
+        if self.instance.pk is not None and self.instance.unavailable_reason:
+            self._make_read_only()
+
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
+        """Each installed component's name -> its declared Config Fields."""
+        raise NotImplementedError
+
+    def _make_read_only(self) -> None:
+        component_field = self.fields[self.component_field]
+        assert isinstance(component_field, forms.ChoiceField)
+        stored_component = getattr(self.instance, self.component_field)
+        component_field.choices = [(name, name) for name in [*self._config_fields, stored_component]]
+        for field in self.fields.values():
+            field.disabled = True
 
     def _add_config_fields(self, components: Mapping[str, Sequence[ConfigField]]) -> None:
         """Adds a form field per Config Field of each component (name -> its declared Config Fields)."""
@@ -94,9 +114,15 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
     class Meta:
         model = Query
         fields = [
-            "name", "spider_name", "url",
-            "schedule_mode", "interval_value", "interval_unit", "cron_schedule",
-            "max_pages", "is_active",
+            "name",
+            "spider_name",
+            "url",
+            "schedule_mode",
+            "interval_value",
+            "interval_unit",
+            "cron_schedule",
+            "max_pages",
+            "is_active",
         ]
         widgets = {
             "schedule_mode": forms.RadioSelect,
@@ -113,18 +139,10 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
             # blank and forcing every new user to make a choice just to accept the default.
             self.fields["interval_value"].initial = 15
             self.fields["interval_unit"].initial = schedule_utils.MINUTES
-        installed = registry.installed()
-        self._add_config_fields({name: installed.get_spider(name).config_fields for name in installed.spider_names()})
-        if self.instance.pk is not None and self.instance.unavailable_reason:
-            self._make_read_only()
 
-    def _make_read_only(self) -> None:
-        """An Unavailable Query can't be edited: every field is disabled, and its missing Spider stays selected."""
-        spider_field = self.fields["spider_name"]
-        assert isinstance(spider_field, forms.ChoiceField)
-        spider_field.choices = [*available_spider_choices(), (self.instance.spider_name, self.instance.spider_name)]
-        for field in self.fields.values():
-            field.disabled = True
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
+        installed = registry.installed()
+        return {name: installed.get_spider(name).config_fields for name in installed.spider_names()}
 
     def clean(self):
         cleaned = super().clean()
@@ -165,25 +183,9 @@ class NotificationProfileForm(ConfigFieldsMixin, forms.ModelForm):
         model = NotificationProfile
         fields = ["name", "notificator_name", "is_default"]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
         installed = registry.installed()
-        self._add_config_fields(
-            {name: installed.get_notificator(name).config_fields for name in installed.notificator_names()}
-        )
-        if self.instance.pk is not None and self.instance.unavailable_reason:
-            self._make_read_only()
-
-    def _make_read_only(self) -> None:
-        """An Unavailable Profile can't be edited: every field is disabled, and its missing Notificator stays selected."""
-        notificator_field = self.fields["notificator_name"]
-        assert isinstance(notificator_field, forms.ChoiceField)
-        notificator_field.choices = [
-            *available_notificator_choices(),
-            (self.instance.notificator_name, self.instance.notificator_name),
-        ]
-        for field in self.fields.values():
-            field.disabled = True
+        return {name: installed.get_notificator(name).config_fields for name in installed.notificator_names()}
 
     def clean(self):
         cleaned = super().clean()

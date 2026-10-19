@@ -31,7 +31,9 @@ class Query(models.Model):
     # Nullable/SET_NULL (like the query/run FKs below) rather than required: a query is always
     # created with an owner by the view layer, but deleting that User account shouldn't cascade
     # into deleting their queries -- it should just orphan them (visible only to staff).
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="queries")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="queries"
+    )
     name = models.CharField(max_length=255, help_text="Query name, passed to the spider (e.g. used in messages).")
     spider_name = models.CharField(max_length=64, choices=available_spider_choices)
     url = models.URLField(max_length=2000)
@@ -145,7 +147,8 @@ class NotificationProfile(models.Model):
     def unavailable_reason(self) -> str:
         """
         Why this Profile is Unavailable (no installed Plugin provides its Notificator), or "" if it isn't.
-        An Unavailable Profile is kept, with its config, but can't be edited or tested, and sending through it fails.
+        An Unavailable Profile is kept, with its config, but can't be edited or tested, and it's skipped when
+        sending: its Deliveries stay pending (see ADR-0002).
         """
         return notificator_unavailable_reason(self.notificator_name)
 
@@ -196,7 +199,9 @@ class CrawlRun(models.Model):
     query = models.ForeignKey(Query, null=True, blank=True, on_delete=models.SET_NULL, related_name="runs")
     # Denormalized so history survives query deletion/renaming/reassignment, and so it stays
     # attributed to its owner even after that (SET_NULL, matching `query` above).
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="crawl_runs")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="crawl_runs"
+    )
     query_name = models.CharField(max_length=255)
     spider_name = models.CharField(max_length=64)
 
@@ -239,7 +244,9 @@ class FoundItem(models.Model):
     query = models.ForeignKey(Query, null=True, blank=True, on_delete=models.SET_NULL, related_name="items")
     # Denormalized so items survive query deletion/renaming/reassignment, and so they stay
     # attributed to their owner even after that (SET_NULL, matching `query` above).
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="found_items")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="found_items"
+    )
     query_name = models.CharField(max_length=255)
     spider_name = models.CharField(max_length=64)
 

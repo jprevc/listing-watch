@@ -18,6 +18,7 @@ from django.utils import timezone
 from listing_watch import registry, spiders
 
 from crawler_manager.delivery import DeliveryOutcome, deliver
+from crawler_manager.failing import update_failing
 from crawler_manager.models import CrawlRun, FoundItem, Query
 from crawler_manager.run_outcome import decide_run_outcome
 
@@ -115,7 +116,8 @@ def run_query(
 
     Never raises: failures are recorded on the returned CrawlRun instead. A failed crawl delivers
     nothing; a finished one is `success` (or `cancelled`) whatever happened to its Deliveries (see
-    `decide_run_outcome`).
+    `decide_run_outcome`). Once the outcome is saved, the run counts toward whether the Query is
+    Failing (see `update_failing`).
     """
     # The very first successful run for a query always crawls all pages, regardless of
     # `max_pages`, so the item history gets fully populated before later runs start only
@@ -166,5 +168,11 @@ def run_query(
     ).record_on(run)
     run.finished_at = timezone.now()
     run.save()
+
+    # After the save, so this run is part of the history it counts. Nothing here changes the run.
+    try:
+        update_failing(query, run)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Updating whether %s is Failing failed", query)
 
     return run

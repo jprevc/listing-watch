@@ -44,6 +44,10 @@ _Avoid_: Search, watch, job
 A user's named, configured instance of a Notificator (e.g. "my ntfy topic"); one can be attached to many Queries.
 _Avoid_: "Profile" alone in user-facing text, notificator config
 
+**Failing**:
+The state of a Query whose crawl has failed on each of its last few runs, counting manual and scheduled runs alike and ignoring stopped ones. It stops being Failing as soon as a run's crawl succeeds. An Unavailable Query becomes Failing too.
+_Avoid_: Broken, down, erroring
+
 **Delivery**:
 One Item sent to one Notification Profile attached to the Item's Query; it is *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it stays pending too long after the Item was found. A pending Delivery is dropped if its Profile is detached from the Query.
 _Avoid_: Notification, send

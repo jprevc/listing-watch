@@ -1,6 +1,10 @@
 # Change Log
 
 ## [Unreleased]
+### Added
+- A Query whose crawl fails on 3 runs in a row is Failing: its Notification Profiles get one alert
+  with the latest error, and one "working again" message once a run's crawl succeeds.
+
 ### Changed
 - Each Item's Delivery is now tracked per Notification Profile: if a Notification Profile fails to send (or is Unavailable),
   its Items are sent with the Query's next run instead of being lost, for up to 7 days after they

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "listing-watch"
 version = "4.1.0"
-description = "An extensible python library to create web crawlers which watch listings/classifieds and alert users of new items."
+description = "A self-hosted web app that watches classifieds/listings sites on a schedule and notifies you of new items, with Spiders and Notificators from Plugins."
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = [ "crawler", "listings", "classifieds", "marketplace",]

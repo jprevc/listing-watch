@@ -4,6 +4,8 @@
 ### Added
 - A Query whose crawl fails on 3 runs in a row is Failing: its Notification Profiles get one alert
   with the latest error, and one "working again" message once a run's crawl succeeds.
+- A self-contained demo (`docker compose up --build`): a fake classifieds site, a demo Spider Plugin
+  that crawls it, and a local ntfy server for the notifications.
 
 ### Changed
 - Each Item's Delivery is now tracked per Notification Profile: if a Notification Profile fails to send (or is Unavailable),
@@ -14,6 +16,8 @@
 ### Fixed
 - A "Run now" that overlaps a scheduled run of the same Query no longer sends the same Items to a
   Notification Profile twice.
+- The Docker image's data volume is declared at `/app/data`. The relative path it used before is
+  rejected by recent Docker versions when recreating a container.
 
 ### Removed
 - `listing_watch.scrape`. Sending Items is done by the web UI.

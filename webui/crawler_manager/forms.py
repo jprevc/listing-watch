@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Callable, Mapping, Sequence
+from typing import Mapping, Sequence
 
 from django import forms
 from django.forms import inlineformset_factory
 
 from crawler_manager import schedule_utils
 from crawler_manager.models import DEFAULT_MESSAGE_BODY_FORMAT, NotificationProfile, Query, QueryNotificationConfig
-from crawler_manager.registry import available_notificator_choices, available_spider_choices
 from listing_watch import registry
 from listing_watch.config_field import ConfigField
 
@@ -41,24 +40,22 @@ class ConfigFieldsMixin:
 
     component_field: str
     config_attr: str
-    # The installed components' (value, label) choices for `component_field`; wrap it in staticmethod().
-    installed_choices: Callable[[], list[tuple[str, str]]]
-
-    def _installed_config_fields(self) -> Mapping[str, Sequence[ConfigField]]:
-        """Each installed component's name -> its declared Config Fields."""
-        raise NotImplementedError
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._add_config_fields(self._installed_config_fields())
+        self._add_config_fields(self._installed_components())
         if self.instance.pk is not None and self.instance.unavailable_reason:
             self._make_read_only()
+
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
+        """Each installed component's name -> its declared Config Fields."""
+        raise NotImplementedError
 
     def _make_read_only(self) -> None:
         component_field = self.fields[self.component_field]
         assert isinstance(component_field, forms.ChoiceField)
         stored_component = getattr(self.instance, self.component_field)
-        component_field.choices = [*self.installed_choices(), (stored_component, stored_component)]
+        component_field.choices = [(name, name) for name in [*self._config_fields, stored_component]]
         for field in self.fields.values():
             field.disabled = True
 
@@ -113,7 +110,6 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
 
     component_field = "spider_name"
     config_attr = "spider_config"
-    installed_choices = staticmethod(available_spider_choices)
 
     class Meta:
         model = Query
@@ -144,7 +140,7 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
             self.fields["interval_value"].initial = 15
             self.fields["interval_unit"].initial = schedule_utils.MINUTES
 
-    def _installed_config_fields(self) -> Mapping[str, Sequence[ConfigField]]:
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
         installed = registry.installed()
         return {name: installed.get_spider(name).config_fields for name in installed.spider_names()}
 
@@ -182,13 +178,12 @@ class NotificationProfileForm(ConfigFieldsMixin, forms.ModelForm):
 
     component_field = "notificator_name"
     config_attr = "config"
-    installed_choices = staticmethod(available_notificator_choices)
 
     class Meta:
         model = NotificationProfile
         fields = ["name", "notificator_name", "is_default"]
 
-    def _installed_config_fields(self) -> Mapping[str, Sequence[ConfigField]]:
+    def _installed_components(self) -> Mapping[str, Sequence[ConfigField]]:
         installed = registry.installed()
         return {name: installed.get_notificator(name).config_fields for name in installed.notificator_names()}
 

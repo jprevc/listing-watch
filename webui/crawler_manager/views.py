@@ -38,6 +38,13 @@ def _visible_items(request):
     return FoundItem.objects.filter(user=request.user)
 
 
+def _visible_profiles(request):
+    # Unlike queries/runs/items, profiles hold live credentials (ntfy tokens, pushover app
+    # tokens, email passwords) -- these stay private to their owner, with no staff-sees-all
+    # exception.
+    return NotificationProfile.objects.filter(user=request.user)
+
+
 def _render_unavailable(request, template_name: str, form, context: dict) -> HttpResponse:
     """
     The edit page of an Unavailable Query or Notification Profile (`form`'s instance): the form is
@@ -50,13 +57,6 @@ def _render_unavailable(request, template_name: str, form, context: dict) -> Htt
         {"form": form, **context, "unavailable_reason": form.instance.unavailable_reason},
         status=409 if request.method == "POST" else 200,
     )
-
-
-def _visible_profiles(request):
-    # Unlike queries/runs/items, profiles hold live credentials (ntfy tokens, pushover app
-    # tokens, email passwords) -- these stay private to their owner, with no staff-sees-all
-    # exception.
-    return NotificationProfile.objects.filter(user=request.user)
 
 
 @login_required

@@ -1,5 +1,6 @@
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 
 import pytest
 from django.contrib.messages import get_messages
@@ -1006,3 +1007,25 @@ def test_query_run_status_includes_the_failing_marker_only_while_the_query_is_fa
 
     assert re.search(r'<span class="badge badge-failed" title="[^"]+">Failing</span>\s*since 5\xa0hours ago', failing)
     assert "Failing" not in recovered
+
+
+def test_query_list_puts_the_exact_failing_since_time_in_the_marker_tooltip(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    query.failing_since = datetime(2026, 1, 10, 9, 30, 15, tzinfo=dt_timezone.utc)
+    query.save()
+
+    response = admin_client.get(reverse("query_list"))
+
+    assert 'title="2026-01-10 10:30:15 CET">Failing</span>' in response.content.decode()
+
+
+def test_query_run_status_leaves_out_the_failing_marker_for_an_unavailable_query(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    query.failing_since = timezone.now() - timedelta(days=3)
+    query.save()
+
+    response = admin_client.get(reverse("query_run_status", args=[query.pk]))
+
+    assert "Failing" not in response.content.decode()

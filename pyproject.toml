@@ -66,3 +66,4 @@ addopts = "--cov=listing_watch --cov-report=xml --cov-report=term"
 DJANGO_SETTINGS_MODULE = "webui.settings"
 testpaths = ["tests", "webui"]
 pythonpath = ["webui"]
+markers = ["cancel_request_poller: runs the real DB-polling stop signal instead of a never-firing one"]

@@ -9,18 +9,21 @@ import hashlib
 import json
 import logging
 import threading
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 
 from django.db import OperationalError, connection
 from django.utils import timezone
 
 from listing_watch import registry, spiders
 
-from crawler_manager.delivery import deliver
+from crawler_manager.delivery import DeliveryOutcome, deliver
 from crawler_manager.models import CrawlRun, FoundItem, Query
+from crawler_manager.run_outcome import decide_run_outcome
 
 logger = logging.getLogger(__name__)
 
-# How often the background thread below re-checks CrawlRun.cancel_requested.
+# How often `poll_cancel_requested`'s background thread re-checks CrawlRun.cancel_requested.
 CANCEL_POLL_INTERVAL_SECONDS = 0.5
 
 
@@ -55,41 +58,28 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
     return new_items
 
 
-def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
-    """
-    Runs a single query's spider, persists newly found items, and delivers them along with any
-    still-pending ones.
+# Supplies a run's stop signal: called with the new CrawlRun, it returns a context manager that
+# yields the Spider's `should_stop` for as long as the crawl lasts.
+StopSignal = Callable[[CrawlRun], AbstractContextManager[Callable[[], bool]]]
 
-    Never raises: failures are recorded on the returned CrawlRun instead. A failed crawl delivers
-    nothing; a finished one is `success` (or `cancelled`) whatever happened to its Deliveries.
-    """
-    # The very first successful run for a query always crawls all pages, regardless of
-    # `max_pages`, so the item history gets fully populated before later runs start only
-    # skimming the first few pages for new listings.
-    is_first_run = not query.runs.filter(status=CrawlRun.Status.SUCCESS).exists()
-    max_pages = None if is_first_run else query.max_pages
 
-    run = CrawlRun.objects.create(
-        query=query,
-        user=query.user,
-        query_name=query.name,
-        spider_name=query.spider_name,
-        trigger=trigger,
-        status=CrawlRun.Status.RUNNING,
-        started_at=timezone.now(),
-    )
-    # `should_stop` (passed into the spider below) must never touch the Django ORM directly:
-    # a browser-driven Spider may call it from inside Playwright's `with sync_playwright()`, whose
-    # sync API drives its event loop via greenlets on the *calling* thread -- so
-    # `asyncio.get_running_loop()` succeeds there for the whole duration of that block, and any
-    # ORM access in that call stack raises
-    # Django's SynchronousOnlyOperation ("You cannot call this from an async context"). So the
-    # actual DB polling happens on a separate plain thread, and the spider only ever reads an
-    # in-memory flag that thread sets.
+@contextmanager
+def poll_cancel_requested(run: CrawlRun) -> Iterator[Callable[[], bool]]:
+    """
+    The production stop signal: true once the run's `cancel_requested` is set (by the "Stop" action).
+
+    The `should_stop` it yields must never touch the Django ORM directly: a browser-driven Spider
+    may call it from inside Playwright's `with sync_playwright()`, whose sync API drives its event
+    loop via greenlets on the *calling* thread -- so `asyncio.get_running_loop()` succeeds there for
+    the whole duration of that block, and any ORM access in that call stack raises Django's
+    SynchronousOnlyOperation ("You cannot call this from an async context"). So the actual DB
+    polling happens on a separate plain thread, and the spider only ever reads an in-memory flag
+    that thread sets.
+    """
     cancel_requested = threading.Event()
     stop_polling = threading.Event()
 
-    def _poll_cancel_requested() -> None:
+    def _poll() -> None:
         try:
             while not stop_polling.is_set():
                 try:
@@ -106,40 +96,75 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
         finally:
             connection.close()
 
-    poller = threading.Thread(target=_poll_cancel_requested, daemon=True)
+    poller = threading.Thread(target=_poll, name="cancel-request-poller", daemon=True)
     poller.start()
-
     try:
-        spider_cls = registry.installed().get_spider(query.spider_name)
-        crawled_items = spider_cls(query.name, query.url, config=query.spider_config).run(
-            max_pages=max_pages, should_stop=cancel_requested.is_set
-        )
+        yield cancel_requested.is_set
+    finally:
+        stop_polling.set()
 
-        new_items = _persist_and_diff(query, crawled_items, run)
-        run.items_found_count = len(crawled_items)
-        run.new_items_count = len(new_items)
 
-        # A stopped run still keeps (and delivers) whatever was found up to that point -- only the
-        # terminal status differs from a normal completion.
-        run.status = CrawlRun.Status.CANCELLED if cancel_requested.is_set() else CrawlRun.Status.SUCCESS
-    except Exception as exc:  # pylint: disable=broad-except
-        run.status = CrawlRun.Status.FAILED
-        run.error_message = str(exc)
-        logger.exception("Query run failed for %s", query)
-    else:
+def run_query(
+    query: Query, trigger: str = CrawlRun.Trigger.MANUAL, *, stop_signal: StopSignal | None = None
+) -> CrawlRun:
+    """
+    Runs a single query's spider, persists newly found items, and delivers them along with any
+    still-pending ones.
+
+    `stop_signal` defaults to `poll_cancel_requested`, the "Stop" action's DB flag.
+
+    Never raises: failures are recorded on the returned CrawlRun instead. A failed crawl delivers
+    nothing; a finished one is `success` (or `cancelled`) whatever happened to its Deliveries (see
+    `decide_run_outcome`).
+    """
+    # The very first successful run for a query always crawls all pages, regardless of
+    # `max_pages`, so the item history gets fully populated before later runs start only
+    # skimming the first few pages for new listings.
+    is_first_run = not query.runs.filter(status=CrawlRun.Status.SUCCESS).exists()
+    max_pages = None if is_first_run else query.max_pages
+
+    run = CrawlRun.objects.create(
+        query=query,
+        user=query.user,
+        query_name=query.name,
+        spider_name=query.spider_name,
+        trigger=trigger,
+        status=CrawlRun.Status.RUNNING,
+        started_at=timezone.now(),
+    )
+
+    crawl_error: Exception | None = None
+    delivery: DeliveryOutcome | None = None
+    delivery_error: Exception | None = None
+    with (stop_signal or poll_cancel_requested)(run) as should_stop:
+        try:
+            spider_cls = registry.installed().get_spider(query.spider_name)
+            crawled_items = spider_cls(query.name, query.url, config=query.spider_config).run(
+                max_pages=max_pages, should_stop=should_stop
+            )
+
+            new_items = _persist_and_diff(query, crawled_items, run)
+            run.items_found_count = len(crawled_items)
+            run.new_items_count = len(new_items)
+        except Exception as exc:  # pylint: disable=broad-except
+            crawl_error = exc
+            logger.exception("Query run failed for %s", query)
+        stop_requested = should_stop()
+
+    # A stopped run still keeps (and delivers) whatever was found up to that point.
+    if crawl_error is None:
         # Runs even with no new Items, to retry the Deliveries earlier runs left pending. Nothing
         # that goes wrong here fails the finished crawl: Items not delivered stay pending.
         try:
-            outcome = deliver(query, new_items)
+            delivery = deliver(query, new_items)
         except Exception as exc:  # pylint: disable=broad-except
-            run.delivery_errors = f"Delivery failed: {exc}"
+            delivery_error = exc
             logger.exception("Delivery failed for %s", query)
-        else:
-            run.pending_deliveries_count = outcome.pending_count
-            run.delivery_errors = "\n".join(f"{label}: {error}" for label, error in outcome.errors.items())
-    finally:
-        stop_polling.set()
-        run.finished_at = timezone.now()
-        run.save()
+
+    decide_run_outcome(
+        crawl_error=crawl_error, stop_requested=stop_requested, delivery=delivery, delivery_error=delivery_error
+    ).record_on(run)
+    run.finished_at = timezone.now()
+    run.save()
 
     return run

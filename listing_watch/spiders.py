@@ -17,7 +17,7 @@ SpiderItem = dict[str, str]
 REQUIRED_ITEM_FIELDS = ("title", "url")
 
 # Fields every Item has, whatever its Spider declares: the required fields, plus `query`, which the
-# Core sets to the Query's name before notifying (see scrape.send_notifications).
+# Core sets to the Query's name before notifying (see crawler_manager.delivery in the web UI).
 GUARANTEED_ITEM_FIELDS = ("query", *REQUIRED_ITEM_FIELDS)
 
 class Spider(ABC):

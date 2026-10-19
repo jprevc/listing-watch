@@ -22,22 +22,36 @@ class _FakeSpider:
         return self.items
 
 
+class _Pigeon(Notificator):
+    """Records every message it sends, as (subject, message), and raises instead while `down` is set."""
+
+    name = "pigeon"
+    down = False
+    sent: list[tuple[str, str]] = []
+
+    def send_text(self, subject: str, message: str) -> None:
+        if self.down:
+            raise ConnectionError("no wind")
+        self.sent.append((subject, message))
+
+
 @pytest.fixture(name="query")
 def query_fixture() -> Query:
     return Query.objects.create(name="test_query", spider_name="cars", url="https://example.com")
 
 
-def test_run_query_persists_items_and_creates_successful_run(query: Query, monkeypatch, installed_plugins) -> None:
-    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
-    installed_plugins(spiders={"cars": _FakeSpider})
-
-    sent = []
-    monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: sent.append(args))
-
-    profile = NotificationProfile.objects.create(
-        user=query.user, name="test profile", notificator_name="email", config={"recipients": "a@b.com"}
-    )
+@pytest.fixture(name="sent")
+def sent_fixture(query: Query, installed_plugins) -> list[tuple[str, str]]:
+    """Installs `_FakeSpider` and `_Pigeon`, attaching a pigeon Profile to `query`; returns what it sends."""
+    _Pigeon.sent, _Pigeon.down = [], False
+    installed_plugins(spiders={"cars": _FakeSpider}, notificators={"pigeon": _Pigeon})
+    profile = NotificationProfile.objects.create(name="carrier", notificator_name="pigeon", config={})
     QueryNotificationConfig.objects.create(query=query, profile=profile, message_body_format="{title}")
+    return _Pigeon.sent
+
+
+def test_run_query_persists_items_and_creates_successful_run(query: Query, sent) -> None:
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
 
     run = services.run_query(query, trigger=CrawlRun.Trigger.MANUAL)
 
@@ -45,13 +59,14 @@ def test_run_query_persists_items_and_creates_successful_run(query: Query, monke
     assert run.items_found_count == 1
     assert run.new_items_count == 1
     assert FoundItem.objects.filter(query=query).count() == 1
-    assert len(sent) == 1
+    assert sent == [("test_query news", "Query: test_query\n\nitem 1")]
+    assert run.pending_deliveries_count == 0
+    assert run.delivery_errors == ""
 
 
-def test_run_query_dedups_on_second_run(query: Query, monkeypatch, installed_plugins) -> None:
+def test_run_query_dedups_on_second_run(query: Query, installed_plugins) -> None:
     _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
     installed_plugins(spiders={"cars": _FakeSpider})
-    monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
 
     first_run = services.run_query(query)
     second_run = services.run_query(query)
@@ -91,7 +106,9 @@ def test_run_query_marks_failed_when_spider_is_not_installed(query: Query, insta
 
 
 @pytest.mark.django_db(transaction=True)
-def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, monkeypatch, installed_plugins) -> None:
+def test_run_query_marks_cancelled_when_stop_requested_mid_run_and_delivers_what_it_found(
+    query: Query, sent, installed_plugins
+) -> None:
     # Simulates a "Stop" click landing while the spider is still crawling: the fake spider flips
     # cancel_requested on the in-progress CrawlRun (mimicking the view) before returning whatever
     # it had already collected. run_query polls that flag on a separate thread (see services.py's
@@ -117,14 +134,14 @@ def test_run_query_marks_cancelled_when_stop_requested_mid_run(query: Query, mon
             pytest.fail("should_stop() never became true")
             return []  # pragma: no cover - unreachable, satisfies type checkers
 
-    installed_plugins(spiders={"cars": _CancellingSpider})
-    monkeypatch.setattr(services.scrape, "send_notifications", lambda *args: None)
+    installed_plugins(spiders={"cars": _CancellingSpider}, notificators={"pigeon": _Pigeon})
 
     run = services.run_query(query)
 
     assert run.status == CrawlRun.Status.CANCELLED
     assert run.items_found_count == 1
     assert FoundItem.objects.filter(query=query).count() == 1
+    assert sent == [("test_query news", "Query: test_query\n\nitem 1")]
 
 
 def test_run_query_passes_its_spider_config_to_the_spider(installed_plugins) -> None:
@@ -149,29 +166,61 @@ def test_run_query_passes_its_spider_config_to_the_spider(installed_plugins) -> 
     assert received_configs == [{"region": "north"}]
 
 
-def test_run_query_reports_an_unavailable_profile_as_a_delivery_failure_and_still_sends_the_others(
-    query: Query, installed_plugins
-) -> None:
-    sent_subjects = []
-
-    class _PigeonNotificator(Notificator):
-        name = "pigeon"
-
-        def send_text(self, subject: str, message: str) -> None:
-            sent_subjects.append(subject)
-
+def test_run_query_skips_an_unavailable_profile_and_still_succeeds_and_sends_the_others(query: Query, sent) -> None:
     _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
-    installed_plugins(spiders={"cars": _FakeSpider}, notificators={"pigeon": _PigeonNotificator})
     unavailable = NotificationProfile.objects.create(name="old smoke", notificator_name="smoke", config={})
-    available = NotificationProfile.objects.create(name="carrier", notificator_name="pigeon", config={})
     QueryNotificationConfig.objects.create(query=query, profile=unavailable, message_body_format="{title}")
-    QueryNotificationConfig.objects.create(query=query, profile=available, message_body_format="{title}")
 
     run = services.run_query(query)
 
-    assert sent_subjects == ["test_query news"]
-    assert run.status == CrawlRun.Status.FAILED
-    assert run.error_message == (
-        "Some notificators failed: old smoke (smoke): No installed Plugin provides a Notificator named 'smoke'."
+    assert sent == [("test_query news", "Query: test_query\n\nitem 1")]
+    assert run.status == CrawlRun.Status.SUCCESS
+    assert run.error_message == ""
+    assert run.pending_deliveries_count == 1
+    assert run.delivery_errors == (
+        "old smoke (smoke): Skipped (Unavailable): No installed Plugin provides a Notificator named 'smoke'."
     )
     assert FoundItem.objects.filter(query=query).count() == 1
+
+
+def test_run_query_records_a_send_failure_on_a_successful_run(query: Query, sent) -> None:
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
+    _Pigeon.down = True
+
+    run = services.run_query(query)
+
+    assert run.status == CrawlRun.Status.SUCCESS
+    assert run.error_message == ""
+    assert run.pending_deliveries_count == 1
+    assert run.delivery_errors == "carrier (pigeon): no wind"
+
+
+def test_run_query_sends_pending_deliveries_even_when_nothing_new_is_found(query: Query, sent) -> None:
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
+    _Pigeon.down = True
+    services.run_query(query)
+    _Pigeon.down = False
+
+    run = services.run_query(query)
+
+    assert run.new_items_count == 0
+    assert sent == [("test_query news", "Query: test_query\n\nitem 1")]
+    assert run.pending_deliveries_count == 0
+    assert run.delivery_errors == ""
+
+
+def test_run_query_does_not_deliver_when_the_crawl_fails(query: Query, sent, installed_plugins) -> None:
+    _FakeSpider.items = [{"title": "item 1", "url": "https://example.com/1"}]
+    _Pigeon.down = True
+    services.run_query(query)
+    _Pigeon.down = False
+
+    class _ExplodingSpider(_FakeSpider):
+        def run(self, max_pages=None, should_stop=None):
+            raise RuntimeError("site layout changed")
+
+    installed_plugins(spiders={"cars": _ExplodingSpider}, notificators={"pigeon": _Pigeon})
+    run = services.run_query(query)
+
+    assert run.status == CrawlRun.Status.FAILED
+    assert sent == []

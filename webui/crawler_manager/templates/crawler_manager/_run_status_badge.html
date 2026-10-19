@@ -14,6 +14,8 @@
         <span class="badge badge-{{ latest_run.status }}">{{ latest_run.get_status_display }}</span>
         {% if latest_run.status == "success" or latest_run.status == "cancelled" %}
             ({{ latest_run.new_items_count }} new / {{ latest_run.items_found_count }} found)
+            {% if latest_run.pending_deliveries_count %}<span class="badge badge-pending">{{ latest_run.pending_deliveries_count }} pending</span>{% endif %}
+            {% if latest_run.delivery_errors %}&mdash; <span title="{{ latest_run.delivery_errors }}">{{ latest_run.delivery_errors|truncatechars:80 }}</span>{% endif %}
         {% elif latest_run.status == "failed" %}
             &mdash; {{ latest_run.error_message|truncatechars:80 }}
         {% elif latest_run.status == "running" and latest_run.cancel_requested %}

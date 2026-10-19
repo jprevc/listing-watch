@@ -666,6 +666,39 @@ def test_run_history_list_only_shows_own_runs_for_non_staff(client, django_user_
     assert "theirs" not in content
 
 
+
+def _run_with_pending_deliveries(query: Query) -> CrawlRun:
+    return CrawlRun.objects.create(
+        query=query,
+        query_name=query.name,
+        spider_name=query.spider_name,
+        trigger=CrawlRun.Trigger.MANUAL,
+        status=CrawlRun.Status.SUCCESS,
+        pending_deliveries_count=2,
+        delivery_errors="carrier (pigeon): no wind\nold smoke (smoke): Skipped (Unavailable)",
+    )
+
+
+def test_run_history_list_shows_pending_deliveries_and_delivery_errors_on_a_successful_run(admin_client) -> None:
+    _run_with_pending_deliveries(Query.objects.create(name="q1", spider_name="cars", url="https://example.com"))
+
+    response = admin_client.get(reverse("run_history_list"))
+
+    content = response.content.decode()
+    assert "2 pending" in content
+    assert "carrier (pigeon): no wind" in content
+    assert "old smoke (smoke): Skipped (Unavailable)" in content
+
+
+def test_query_list_shows_the_latest_runs_delivery_errors(admin_client) -> None:
+    _run_with_pending_deliveries(Query.objects.create(name="q1", spider_name="cars", url="https://example.com"))
+
+    response = admin_client.get(reverse("query_list"))
+
+    content = response.content.decode()
+    assert "2 pending" in content
+    assert "carrier (pigeon): no wind" in content
+
 class _ConfiguredSpider(Spider):
     name = "cars"
     config_fields = (

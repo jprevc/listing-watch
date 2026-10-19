@@ -54,7 +54,10 @@
             {% if request.user.is_staff %}<td data-label="Owner">{{ run.user|default:"—" }}</td>{% endif %}
             <td data-label="Spider">{{ run.spider_name }}</td>
             <td data-label="Trigger">{{ run.get_trigger_display }}</td>
-            <td data-label="Status"><span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span></td>
+            <td data-label="Status">
+                <span class="badge badge-{{ run.status }}">{{ run.get_status_display }}</span>
+                {% if run.pending_deliveries_count %}<span class="badge badge-pending" title="Deliveries still waiting to be sent">{{ run.pending_deliveries_count }} pending</span>{% endif %}
+            </td>
             <td data-label="Started">{{ run.started_at|default:"—" }}</td>
             <td data-label="Finished">{{ run.finished_at|default:"—" }}</td>
             <td data-label="Found">
@@ -71,6 +74,11 @@
         {% if run.status == "failed" and run.error_message %}
         <tr>
             <td colspan="{% if request.user.is_staff %}9{% else %}8{% endif %}" class="wrap" style="color: var(--danger-text); font-size: 0.85rem;">{{ run.error_message }}</td>
+        </tr>
+        {% endif %}
+        {% if run.delivery_errors %}
+        <tr>
+            <td colspan="{% if request.user.is_staff %}9{% else %}8{% endif %}" class="wrap" style="color: var(--warning-text); font-size: 0.85rem;">{{ run.delivery_errors|linebreaksbr }}</td>
         </tr>
         {% endif %}
         {% empty %}

@@ -45,13 +45,9 @@ A user's named, configured instance of a Notificator (e.g. "my ntfy topic"); one
 _Avoid_: "Profile" alone in user-facing text, notificator config
 
 **Failing**:
-The state of a Query whose crawl has failed on each of its last few runs, counting manual and scheduled runs alike and ignoring stopped ones. It stops being Failing as soon as a run's crawl succeeds. An Unavailable Query becomes Failing too.
+The state of a Query whose crawl failed on each of its last few finished runs, counting manual and scheduled runs alike (cancelled runs don't count). It is Failing *since* the start of the first failed run in that streak, and stops being Failing as soon as a run's crawl succeeds. An Unavailable Query becomes Failing too.
 _Avoid_: Broken, down, erroring
 
 **Delivery**:
 One Item sent to one Notification Profile attached to the Item's Query; it is *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it stays pending too long after the Item was found. A pending Delivery is dropped if its Profile is detached from the Query.
 _Avoid_: Notification, send
-
-**Failing**:
-The state of a Query whose crawl failed on each of its last few finished runs (cancelled runs don't count); it is Failing *since* the start of the first failed run in that streak, and stops being Failing when a run's crawl succeeds.
-_Avoid_: Broken, down, erroring

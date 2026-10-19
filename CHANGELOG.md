@@ -7,6 +7,10 @@
   were found. A failed send no longer fails the run; the run history shows the pending count and
   the delivery errors instead.
 
+### Fixed
+- A "Run now" that overlaps a scheduled run of the same Query no longer sends the same Items to a
+  Notification Profile twice.
+
 ### Removed
 - `listing_watch.scrape`. Sending Items is done by the web UI.
 

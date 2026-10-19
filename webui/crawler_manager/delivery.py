@@ -6,9 +6,11 @@ per Item and Profile so an Item a Profile didn't accept is retried on later runs
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 
+from django.db.models import Q
 from django.db.models.signals import pre_delete, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -22,6 +24,11 @@ logger = logging.getLogger(__name__)
 # How long after its Item was found a Delivery may stay pending, so a Profile fixed weeks later
 # isn't flooded with stale listings.
 EXPIRE_AFTER = timedelta(days=7)
+
+# How long a run's claim on the Deliveries it is sending holds. Only a run that died mid-send
+# should leave a claim this old, so its Deliveries become sendable again; a send that really takes
+# longer than this can be repeated by an overlapping run.
+CLAIM_TIMEOUT = timedelta(minutes=15)
 
 
 @dataclass(frozen=True)
@@ -54,26 +61,32 @@ def deliver(query: Query, new_items: list[FoundItem]) -> DeliveryOutcome:
         if profile.unavailable_reason:
             errors[str(profile)] = f"Skipped (Unavailable): {profile.unavailable_reason}"
             continue
-        # Older Items first, then this run's, each in the order they were found.
-        deliveries = list(
-            pending.filter(profile=profile).select_related("item").order_by("item__first_seen_at", "item__pk")
+        # Runs of the same Query can overlap (e.g. "Run now" during a scheduled run). Claiming in a
+        # single conditional UPDATE means only one of them sends each Delivery.
+        claim = uuid.uuid4()
+        now = timezone.now()
+        pending.filter(profile=profile).filter(Q(claim__isnull=True) | Q(claimed_at__lt=now - CLAIM_TIMEOUT)).update(
+            claim=claim, claimed_at=now
         )
-        if not deliveries:
-            continue
-        # The Core, not the Spider, names the Query: an Item only has to carry a title and a URL,
-        # but Notificators group Items under a "Query: ..." header read from each Item's `query`.
-        items = [{**delivery.item.payload, "query": query.name} for delivery in deliveries]
+        claimed = Delivery.objects.filter(claim=claim)
         # One Profile failing (e.g. bad credentials) must not stop the others from sending.
         try:
+            # Older Items first, then this run's, each in the order they were found.
+            deliveries = list(claimed.select_related("item").order_by("item__first_seen_at", "item__pk"))
+            if not deliveries:
+                continue
+            # The Core, not the Spider, names the Query: an Item only has to carry a title and a URL,
+            # but Notificators group Items under a "Query: ..." header read from each Item's `query`.
+            items = [{**delivery.item.payload, "query": query.name} for delivery in deliveries]
             notificator = registry.installed().get_notificator(profile.notificator_name)(profile.config)
             notificator.send_items(f"{query.name} news", items, attachment.message_body_format)
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Notification Profile %s failed to send %s's Items", profile, query)
             errors[str(profile)] = str(exc)
+            claimed.update(claim=None, claimed_at=None)
             continue
-        pending.filter(pk__in=[delivery.pk for delivery in deliveries]).update(
-            status=Delivery.Status.DELIVERED, delivered_at=timezone.now()
-        )
+        # By claim, not by status: the Profile has these Items even if a run expired them meanwhile.
+        claimed.update(status=Delivery.Status.DELIVERED, delivered_at=timezone.now(), claim=None, claimed_at=None)
 
     return DeliveryOutcome(pending_count=pending.count(), errors=errors)
 

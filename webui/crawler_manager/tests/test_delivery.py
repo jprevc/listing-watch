@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from datetime import timedelta
 
 import pytest
 from django.utils import timezone
 
-from crawler_manager.delivery import DeliveryOutcome, deliver
+from crawler_manager.delivery import CLAIM_TIMEOUT, DeliveryOutcome, deliver
 from crawler_manager.models import Delivery, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 from listing_watch.notificators import Notificator
 
@@ -208,3 +209,60 @@ def test_reports_an_unavailable_profile_as_skipped_even_with_nothing_pending(que
             "old smoke (smoke)": "Skipped (Unavailable): No installed Plugin provides a Notificator named 'smoke'."
         },
     )
+
+
+class _Echo(Notificator):
+    """Sends like `_Pigeon`, but first runs `during_send` once, standing in for an overlapping run of the Query."""
+
+    name = "echo"
+    during_send: Callable[[], None] | None = None
+    sent: list[tuple[str, str]] = []
+
+    def send_text(self, subject: str, message: str) -> None:
+        during_send, type(self).during_send = type(self).during_send, None
+        if during_send is not None:
+            during_send()
+        self.sent.append((subject, message))
+
+
+@pytest.fixture(name="echo")
+def echo_fixture(query: Query, installed_plugins) -> type[_Echo]:
+    _Echo.sent, _Echo.during_send = [], None
+    installed_plugins(notificators={"echo": _Echo})
+    _attach(query, "carrier", notificator_name="echo")
+    return _Echo
+
+
+def test_an_overlapping_run_does_not_send_what_another_run_is_still_sending(query: Query, echo: type[_Echo]) -> None:
+    overlapping: list[DeliveryOutcome] = []
+    echo.during_send = lambda: overlapping.append(deliver(query, [_item(query, "b")]))
+
+    outcome = deliver(query, [_item(query, "a")])
+
+    assert echo.sent == [("cars news", "Query: cars\n\nb"), ("cars news", "Query: cars\n\na")]
+    assert overlapping == [DeliveryOutcome(pending_count=1, errors={})]
+    assert outcome == DeliveryOutcome(pending_count=0, errors={})
+
+
+def test_a_run_that_died_mid_send_leaves_its_deliveries_to_a_run_15_minutes_later(
+    query: Query, echo: type[_Echo], monkeypatch
+) -> None:
+
+    def _die() -> None:
+        raise SystemExit("worker killed")
+
+    echo.during_send = _die
+    with pytest.raises(SystemExit):
+        deliver(query, [_item(query, "a")])
+
+    soon = deliver(query, [])
+
+    assert echo.sent == []
+    assert soon == DeliveryOutcome(pending_count=1, errors={})
+
+    later = timezone.now() + CLAIM_TIMEOUT + timedelta(seconds=1)
+    monkeypatch.setattr(timezone, "now", lambda: later)
+    outcome = deliver(query, [])
+
+    assert echo.sent == [("cars news", "Query: cars\n\na")]
+    assert outcome == DeliveryOutcome(pending_count=0, errors={})

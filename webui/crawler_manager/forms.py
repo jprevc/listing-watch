@@ -118,9 +118,15 @@ class QueryForm(ConfigFieldsMixin, forms.ModelForm):
     class Meta:
         model = Query
         fields = [
-            "name", "spider_name", "url",
-            "schedule_mode", "interval_value", "interval_unit", "cron_schedule",
-            "max_pages", "is_active",
+            "name",
+            "spider_name",
+            "url",
+            "schedule_mode",
+            "interval_value",
+            "interval_unit",
+            "cron_schedule",
+            "max_pages",
+            "is_active",
         ]
         widgets = {
             "schedule_mode": forms.RadioSelect,

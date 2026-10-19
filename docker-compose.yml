@@ -1,0 +1,64 @@
+# A self-contained demo: `docker compose up --build`, then
+#   - http://localhost:8000          Listing Watch (sign in as demo / demo)
+#   - http://localhost:8080/listing-watch-demo   the ntfy topic notifications arrive on
+#   - http://localhost:8001          the fake classifieds site being watched
+# The demo Query runs every minute, and the site posts a new listing every 2 minutes.
+
+services:
+  core:
+    # The Core image, built from this checkout as the base of the images below. It exits at once.
+    build: .
+    image: listing-watch-core:local
+    entrypoint: ["true"]
+
+  app:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+      additional_contexts:
+        core: service:core
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: demo-only-not-secret
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      NC_DB_PATH: /app/data/db.sqlite3
+    volumes:
+      - app-data:/app/data
+    depends_on: [market, ntfy]
+
+  market:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+      additional_contexts:
+        core: service:core
+    entrypoint: ["python", "-m", "listing_watch_demo.market"]
+    environment:
+      DEMO_MARKET_INTERVAL: "120"
+      DEMO_MARKET_BASE_URL: http://localhost:8001
+    ports:
+      - "8001:8001"
+    networks:
+      default:
+        # A dotted name, so the Query's URL passes the web UI's URL validation.
+        aliases: [market.demo.test]
+
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    command: serve
+    environment:
+      NTFY_BASE_URL: http://localhost:8080
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+    volumes:
+      - ntfy-cache:/var/cache/ntfy
+    ports:
+      - "8080:80"
+    networks:
+      default:
+        aliases: [ntfy.demo.test]
+
+volumes:
+  app-data:
+  ntfy-cache:

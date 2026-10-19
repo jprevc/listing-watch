@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "listing-watch-demo"
+version = "1.0.0"
+description = "A demo Spider Plugin for Listing Watch, plus the fake classifieds site it crawls."
+requires-python = ">=3.12"
+dependencies = ["listing-watch>=4,<5"]
+
+[project.license]
+text = "MIT"
+
+# The Plugin registers its Spider here; the Core discovers it through this entry-point group.
+[project.entry-points."listing_watch.spiders"]
+demo-market = "listing_watch_demo.spider:DemoMarketSpider"
+
+[tool.setuptools]
+packages = ["listing_watch_demo"]

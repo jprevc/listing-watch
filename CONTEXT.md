@@ -47,3 +47,7 @@ _Avoid_: "Profile" alone in user-facing text, notificator config
 **Delivery**:
 One Item sent to one Notification Profile attached to the Item's Query; it is *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it stays pending too long after the Item was found. A pending Delivery is dropped if its Profile is detached from the Query.
 _Avoid_: Notification, send
+
+**Failing**:
+The state of a Query whose crawl failed on each of its last few finished runs (cancelled runs don't count); it is Failing *since* the start of the first failed run in that streak, and stops being Failing when a run's crawl succeeds.
+_Avoid_: Broken, down, erroring

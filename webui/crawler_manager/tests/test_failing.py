@@ -315,3 +315,21 @@ def test_overlapping_successful_runs_while_failing_send_one_working_again_messag
     update_failing(theirs, their_run)
 
     assert [subject for subject, _ in sent] == ["cars is working again"]
+
+
+def test_runs_count_in_the_order_they_finished_not_the_order_they_started(query: Query, sent) -> None:
+    _attach(query, "carrier")
+    # A long scheduled run starts first, three short manual runs fail while it crawls, then it succeeds.
+    long_run = _run(query, CrawlRun.Status.RUNNING)
+    for _ in range(3):
+        _fail(query, trigger=CrawlRun.Trigger.MANUAL)
+    long_run.status, long_run.finished_at = CrawlRun.Status.SUCCESS, START + timedelta(hours=5)
+    long_run.save()
+    update_failing(query, long_run)
+    sent.clear()
+
+    _fail(query)
+
+    assert sent == []
+    query.refresh_from_db()
+    assert query.failing_since is None

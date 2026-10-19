@@ -252,3 +252,33 @@ def test_run_query_still_records_its_outcome_and_does_not_raise_when_updating_fa
     assert run.status == CrawlRun.Status.SUCCESS
     assert run.error_message == ""
     assert run.delivery_errors == ""
+
+
+def test_run_query_records_a_failed_run_unchanged_when_its_failing_alert_cannot_be_sent(
+    query: Query, sent, installed_plugins
+) -> None:
+    class _ExplodingSpider(_FakeSpider):
+        def run(self, max_pages=None, should_stop=None):
+            raise RuntimeError("site layout changed")
+
+    installed_plugins(spiders={"cars": _ExplodingSpider}, notificators={"pigeon": _Pigeon})
+    _Pigeon.down = True
+    runs = [services.run_query(query) for _ in range(3)]
+
+    third = CrawlRun.objects.get(pk=runs[2].pk)
+    assert third.status == CrawlRun.Status.FAILED
+    assert third.error_message == "site layout changed"
+    assert third.pending_deliveries_count == 0
+    assert third.delivery_errors == ""
+    query.refresh_from_db()
+    assert query.failing_since == runs[0].started_at
+
+
+def test_run_query_alerts_when_an_unavailable_query_becomes_failing(query: Query, sent, installed_plugins) -> None:
+    installed_plugins(spiders={}, notificators={"pigeon": _Pigeon})
+
+    for _ in range(3):
+        services.run_query(query)
+
+    assert [subject for subject, _ in sent] == ["test_query is failing"]
+    assert sent[0][1].endswith("Latest error:\nNo installed Plugin provides a Spider named 'cars'.")

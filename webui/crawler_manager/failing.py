@@ -66,11 +66,12 @@ def _on_success(query: Query, run: CrawlRun) -> None:
 
 def _streak_start(query: Query) -> datetime | None:
     """The `started_at` of the first failed run in the current streak, if it has reached FAILING_AFTER runs."""
-    # Cancelled runs neither extend nor break the streak, and unfinished ones don't count yet.
-    last_success = query.runs.filter(status=CrawlRun.Status.SUCCESS).order_by("-started_at").first()
+    # Cancelled runs neither extend nor break the streak, and unfinished ones don't count yet. By when
+    # runs finished, not started: overlapping runs can finish in a different order than they started.
+    last_success = query.runs.filter(status=CrawlRun.Status.SUCCESS).order_by("-finished_at").first()
     streak = query.runs.filter(status=CrawlRun.Status.FAILED)
     if last_success is not None:
-        streak = streak.filter(started_at__gt=last_success.started_at)
+        streak = streak.filter(finished_at__gt=last_success.finished_at)
     started = list(streak.order_by("started_at").values_list("started_at", flat=True))
     return started[0] if len(started) >= FAILING_AFTER else None
 

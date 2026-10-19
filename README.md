@@ -1,63 +1,119 @@
 # Listing Watch
 
-**An extensible Python framework that watches listings/classifieds sites for new items and sends notifications through pluggable Notificators.**
+**A self-hosted web app that watches classifieds and listings sites on a schedule and notifies you the moment something new appears.**
 
 [![Tests](https://github.com/jprevc/listing-watch/actions/workflows/main.yml/badge.svg)](https://github.com/jprevc/listing-watch/actions/workflows/main.yml)
+[![PyPI](https://img.shields.io/pypi/v/listing-watch)](https://pypi.org/project/listing-watch/)
+[![Docker Hub](https://img.shields.io/docker/v/josprevc/listing-watch?sort=semver&label=docker%20hub)](https://hub.docker.com/r/josprevc/listing-watch)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI version](https://badge.fury.io/py/listing-watch.svg)](https://pypi.org/project/listing-watch/)
 
-## Overview
+![The Query list, with two Queries watching the Demo Market](https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/queries-light.png)
 
-Listing Watch runs Spiders that crawl configured websites (e.g. classifieds, car listings) for new items. Spiders and Notificators both come from Plugins: the Core ships neither. When new content is found, it alerts you through the installed Notificators (e.g. Email, Pushover or ntfy from [`listing-watch-notificators`](https://github.com/jprevc/listing-watch-notificators)). Everything — which sites to watch, how often, and where to send notifications — is configured through the [Web UI](#web-ui), a Django app backed by a database (no config files, no legacy JSON cache).
+You set up a **Query**: a site to watch, how often to check it, and where to send alerts. On every run, a
+**Spider** crawls the site, the new **Items** are diffed against everything already seen, and only the new
+ones are sent to your **Notification Profiles** (ntfy, Pushover, Email). Spiders and Notificators are
+installed as Plugins, so adding a site means writing a small Python package, not changing the app.
+
+## Try it in one command
+
+The repo includes a self-contained demo: a fake classifieds site that posts a new listing every 2 minutes,
+a [demo Spider Plugin](demo/plugin) that crawls it, and a local [ntfy](https://ntfy.sh) server to receive
+the alerts. You need only Docker.
+
+```bash
+git clone https://github.com/jprevc/listing-watch.git
+cd listing-watch
+docker compose up --build
+```
+
+| Open                                        | To see                                                      |
+|---------------------------------------------|-------------------------------------------------------------|
+| http://localhost:8000 (sign in `demo`/`demo`) | Listing Watch, with two Queries already set up              |
+| http://localhost:8080/listing-watch-demo    | The notifications arriving                                   |
+| http://localhost:8001                       | The fake classifieds site being watched                      |
+
+The first run finds the listings already posted. After that, each new listing reaches ntfy within a
+minute of being posted. `docker compose down -v` resets everything.
+
+<table>
+  <tr>
+    <td><img alt="Notifications arriving in ntfy" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/ntfy.png"></td>
+    <td><img alt="Found items" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/items.png"></td>
+  </tr>
+  <tr>
+    <td><img alt="Run history" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/runs.png"></td>
+    <td><img alt="The Query list in the dark theme" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/queries-dark.png"></td>
+  </tr>
+</table>
 
 ## Features
 
-- **Scheduling** — Run each query on a simple interval or a cron expression, configured per query in the web UI.
-- **Pluggable notificators** — Install Notificator Plugins (the Docker image ships [`listing-watch-notificators`](https://github.com/jprevc/listing-watch-notificators): Email, Pushover and ntfy); mix and match per query with configurable message formats.
-- **Pluggable spiders** — Install Spider Plugins, or write your own (see [Writing a Spider Plugin](#writing-a-spider-plugin)); each Spider returns Items whose keys match your `message_body_format` placeholders.
-- **Web UI** — Manage queries and schedules, trigger manual runs, and browse found items and run history in a browser.
-- **Dockerized** — Suitable for containerized deployment (images published on Docker Hub).
+- **Per-Query schedules**: a simple interval or a cron expression, or manual runs only. "Run now" and
+  "Stop" work on any Query.
+- **Reliable delivery**: an Item is never lost because a notification failed. It stays pending and goes
+  out with the next run (see [ADR-0002](docs/adr/0002-track-delivery-per-item-and-profile.md)).
+- **Failing alerts**: a Query whose crawl fails 3 runs in a row alerts its Notification Profiles once, and
+  again when it recovers, so a broken Spider doesn't go unnoticed.
+- **Plugins for sites and channels**: Spiders and Notificators are discovered through Python entry points.
+  The settings each one needs are rendered as form fields in the web UI.
+- **Multi-user**: everyone on a shared instance has their own Queries and Notification Profiles.
+- **Responsive UI** with light and dark themes, built with Django, htmx, Alpine.js and Tailwind.
+
+<p align="center">
+  <img alt="The Query form, with the Spider's own Max price setting" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/query-form.png" width="58%">
+  &nbsp;
+  <img alt="The Query list on a phone" src="https://raw.githubusercontent.com/jprevc/listing-watch/master/docs/screenshots/queries-mobile.png" width="26%">
+</p>
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph WebUI
-        DB[(Database)]
+    subgraph Core["Core (this repo)"]
+        UI[Web UI] --> DB[(SQLite)]
+        DB --> Scheduler
+        Scheduler --> Run[Run a Query]
+        Run -->|diff against seen Items| DB
+        Run --> Deliver[Send pending Deliveries]
     end
-    subgraph Runtime
-        Scheduler[Scheduler]
-        Spiders[Spiders]
-        Notify[Notificators]
+    subgraph Plugins
+        Spiders
+        Notificators
     end
-    DB --> Scheduler
-    Scheduler --> Spiders
-    Spiders --> DB
-    DB -->|new items| Notify
+    Run -->|entry points| Spiders
+    Deliver -->|entry points| Notificators
 ```
 
-Flow: queries, schedules, and notification profiles are configured in the web UI and stored in the database. The scheduler triggers each query on its configured schedule. Spiders fetch pages and parse items, which are diffed against previously found items already stored in the database. New items trigger notifications via that query's configured channels.
+The Core is the web UI, the scheduler and the Plugin interface. It ships no Spiders and no Notificators,
+and never imports a concrete one. Everything is discovered at runtime through the `listing_watch.spiders`
+and `listing_watch.notificators` entry-point groups. The public [notificators](https://github.com/jprevc/listing-watch-notificators)
+Plugin provides ntfy, Pushover and Email. The Spiders for real sites live in a private Plugin
+([ADR-0001](docs/adr/0001-split-core-spiders-notificators.md) explains why), which is why this repo comes
+with a demo instead.
 
-## Notification configuration
+### Engineering notes
 
-The Core contains no Notificators of its own: they come from Plugins, registered through the
-`listing_watch.notificators` entry-point group. The public Docker image includes
-[`listing-watch-notificators`](https://github.com/jprevc/listing-watch-notificators), which provides
-**Email** (Gmail SMTP), **Pushover** and **ntfy** -- see its README for how to set each one up. For a
-local install, add it next to the Core:
-
-```bash
-uv pip install "listing-watch-notificators>=1,<2"
-```
-
-Each Notificator is set up once as a reusable **notification profile** in the web UI (see [Web UI](#web-ui)), then attached to any query.
+- **Plugin contract.** [`listing_watch.contract.check_plugin`](listing_watch/contract.py) lets a Plugin check
+  itself against the Core's interface from its own tests. A Query or Notification Profile whose Plugin
+  isn't installed is kept and shown as *Unavailable*, never deleted.
+- **One Delivery per Item and Profile.** Overlapping runs of the same Query (a "Run now" during a scheduled
+  run) claim pending Deliveries with a single conditional `UPDATE`, so nothing is sent twice. Claims left
+  by a run that died expire after 15 minutes.
+- **SQLite under concurrent writers.** The web workers and the scheduler process write the same database.
+  WAL mode, `IMMEDIATE` transactions and a long busy timeout fixed a bug where "database is locked" once
+  silently killed APScheduler's thread (see [`settings.py`](webui/webui/settings.py)).
+- **Stopping a crawl safely.** A Spider can run a headless browser on a greenlet-driven event loop, where
+  Django ORM calls aren't allowed. The "Stop" signal is polled on a separate thread and handed to the
+  Spider as a plain flag.
+- **Docs for decisions, not just code.** [ADRs](docs/adr), a domain glossary ([CONTEXT.md](CONTEXT.md)) and a
+  [changelog](CHANGELOG.md).
+- **CI/CD.** Tests, mypy and pylint run on every push. Tagged releases publish to PyPI and Docker Hub.
 
 ## Writing a Spider Plugin
 
-The Core contains no Spiders of its own: they come from Plugins, registered through the
-`listing_watch.spiders` entry-point group. A Plugin is an ordinary Python package that depends on
-`listing-watch>=4,<5`:
+[`demo/plugin`](demo/plugin) is a complete, standard-library-only example. A Plugin is an ordinary Python
+package that depends on `listing-watch>=4,<5`:
 
 1. Subclass **`listing_watch.spiders.Spider`**, set its `name`, and implement `run()` so it returns
    Item dicts. Every Item needs a `title` and a `url`; `price` is optional, and extra keys are allowed.
@@ -74,18 +130,30 @@ The Core contains no Spiders of its own: they come from Plugins, registered thro
    `listing_watch.contract.check_plugin("my-plugin")`.
 
 The public Docker image has no Spiders. To deploy, build an image `FROM` it that installs your Spider
-Plugin, plus anything its Spiders need (e.g. a browser).
+Plugin, plus anything its Spiders need (e.g. a browser). [`demo/Dockerfile`](demo/Dockerfile) does exactly
+that.
 
-## Web UI
+## Notification configuration
 
-A Django-based web UI lives in `webui/`. It lets you add and configure queries (URL + spider + cron schedule + notifications) from a browser, trigger manual runs, and browse found items and run history (via Django admin). It uses a SQLite database instead of the legacy JSON cache files.
+Notificators also come from Plugins. The Docker image includes
+[`listing-watch-notificators`](https://github.com/jprevc/listing-watch-notificators), which provides
+**Email** (Gmail SMTP), **Pushover** and **ntfy**; see its README for how to set each one up. For a local
+install, add it next to the Core:
 
-Notification credentials (e.g. an ntfy topic or a Pushover app token) are set up once as a reusable **notification profile** under "Notification profiles" in the web UI, then attached to any query -- no need to re-enter them for every new query. Mark a profile as default for its type to have it auto-attached (pre-selected, still removable) whenever you add a query. Profiles are private to the account that created them.
+```bash
+uv pip install "listing-watch-notificators>=1,<2"
+```
+
+Each Notificator is set up once as a reusable **Notification Profile** under "Notification profiles", then
+attached to any Query. Mark a profile as default for its type to have it pre-selected whenever you add a
+Query. Profiles are private to the account that created them.
+
+## Running without Docker
 
 ```bash
 uv sync --group web --group dev
 uv pip install "listing-watch-notificators>=1,<2"   # Notificators come from a Plugin
-uv pip install <your Spider Plugin>                  # and so do Spiders
+uv pip install <your Spider Plugin>                  # and so do Spiders, e.g. ./demo/plugin
 cd webui
 python manage.py migrate
 python manage.py createsuperuser
@@ -94,20 +162,18 @@ python manage.py runserver        # web UI, in one terminal
 python manage.py runscheduler     # cron-driven scheduler, in another terminal
 ```
 
-Visit `http://localhost:8000/` for the query list, and `http://localhost:8000/admin/` for found items and run history.
+Visit `http://localhost:8000/`.
 
-## Development setup
-
-Clone the repository:
+## Development
 
 ```bash
-git clone https://github.com/jprevc/listing-watch.git
-cd listing-watch
+uv sync --group web --group dev
+uv run pytest
 ```
 
-Install in development mode (with dev dependencies) and run tests:
+The demo Plugin has its own tests:
 
 ```bash
-uv sync --extra dev
-uv run pytest
+uv pip install -e ./demo/plugin
+uv run --no-sync pytest demo/plugin/tests --no-cov
 ```

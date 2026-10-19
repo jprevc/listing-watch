@@ -13,3 +13,5 @@
 /webui/db.sqlite3*
 /webui/staticfiles/**
 /data/**
+/demo/plugin/build/**
+/demo/plugin/*.egg-info/**

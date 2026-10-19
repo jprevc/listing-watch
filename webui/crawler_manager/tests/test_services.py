@@ -1,4 +1,5 @@
-import time
+import contextlib
+import threading
 
 import pytest
 
@@ -105,38 +106,24 @@ def test_run_query_marks_failed_when_spider_is_not_installed(query: Query, insta
     assert run.error_message == "No installed Plugin provides a Spider named 'cars'."
 
 
-@pytest.mark.django_db(transaction=True)
 def test_run_query_marks_cancelled_when_stop_requested_mid_run_and_delivers_what_it_found(
     query: Query, sent, installed_plugins
 ) -> None:
-    # Simulates a "Stop" click landing while the spider is still crawling: the fake spider flips
-    # cancel_requested on the in-progress CrawlRun (mimicking the view) before returning whatever
-    # it had already collected. run_query polls that flag on a separate thread (see services.py's
-    # comment on why -- Playwright's sync API makes ORM access from the spider's own call stack
-    # unsafe), so the fake spider has to wait it out like a real paginating spider's loop
-    # does, rather than asserting `should_stop()` flips true immediately.
-    # `transaction=True` is required here (not the module-level plain `django_db`): the poller
-    # thread reads through its own DB connection, which only sees committed rows -- a plain
-    # `django_db` test wraps everything in one uncommitted outer transaction the poller can't see.
-    class _CancellingSpider:
+    # Simulates a "Stop" click landing while the spider is still crawling: the spider sees the
+    # stop and returns whatever it had already collected.
+    stop = threading.Event()
+
+    class _CancellingSpider(_FakeSpider):
         items = [{"title": "item 1", "url": "https://example.com/1", "price": "10"}]
 
-        def __init__(self, query_name, url, config=None):
-            self.query_name = query_name
-            self.url = url
-
         def run(self, max_pages=None, should_stop=None):
-            query.runs.update(cancel_requested=True)
-            for _ in range(100):
-                if should_stop():
-                    return self.items
-                time.sleep(0.05)
-            pytest.fail("should_stop() never became true")
-            return []  # pragma: no cover - unreachable, satisfies type checkers
+            stop.set()
+            assert should_stop()
+            return self.items
 
     installed_plugins(spiders={"cars": _CancellingSpider}, notificators={"pigeon": _Pigeon})
 
-    run = services.run_query(query)
+    run = services.run_query(query, stop_signal=lambda run: contextlib.nullcontext(stop.is_set))
 
     assert run.status == CrawlRun.Status.CANCELLED
     assert run.items_found_count == 1

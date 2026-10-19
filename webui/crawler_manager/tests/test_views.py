@@ -1,8 +1,10 @@
 import re
+from datetime import timedelta
 
 import pytest
 from django.contrib.messages import get_messages
 from django.urls import reverse
+from django.utils import timezone
 
 from crawler_manager import scheduling
 from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
@@ -948,3 +950,59 @@ def test_query_form_lists_the_guaranteed_item_fields_for_a_spider_that_declares_
     assert '<script id="spider-item-fields" type="application/json">{"bikes": ["query", "title", "url"]}</script>' in (
         response.content.decode()
     )
+
+
+def test_query_list_marks_a_failing_query_with_how_long_it_has_been_failing(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    query.failing_since = timezone.now() - timedelta(days=3)
+    query.save()
+
+    response = admin_client.get(reverse("query_list"))
+
+    content = response.content.decode()
+    assert re.search(r'<span class="badge badge-failed" title="[^"]+">Failing</span>\s*since 3\xa0days ago', content)
+
+
+def test_query_list_shows_no_failing_marker_for_a_query_that_is_not_failing(admin_client, installed_plugins) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    CrawlRun.objects.create(query=query, query_name=query.name, status=CrawlRun.Status.FAILED, error_message="timeout")
+
+    response = admin_client.get(reverse("query_list"))
+
+    content = response.content.decode()
+    assert '<span class="badge badge-failed">Failed</span>' in content
+    assert "Failing" not in content
+
+
+def test_query_list_shows_only_the_unavailable_badge_for_an_unavailable_failing_query(
+    admin_client, installed_plugins
+) -> None:
+    installed_plugins(spiders={})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    query.failing_since = timezone.now() - timedelta(days=3)
+    query.save()
+
+    response = admin_client.get(reverse("query_list"))
+
+    content = response.content.decode()
+    assert '<span class="badge badge-unavailable">Unavailable</span>' in content
+    assert "Failing" not in content
+
+
+def test_query_run_status_includes_the_failing_marker_only_while_the_query_is_failing(
+    admin_client, installed_plugins
+) -> None:
+    installed_plugins(spiders={"cars": _ConfiguredSpider})
+    query = Query.objects.create(name="q1", spider_name="cars", url="https://example.com")
+    query.failing_since = timezone.now() - timedelta(hours=5)
+    query.save()
+
+    failing = admin_client.get(reverse("query_run_status", args=[query.pk])).content.decode()
+    query.failing_since = None
+    query.save()
+    recovered = admin_client.get(reverse("query_run_status", args=[query.pk])).content.decode()
+
+    assert re.search(r'<span class="badge badge-failed" title="[^"]+">Failing</span>\s*since 5\xa0hours ago', failing)
+    assert "Failing" not in recovered

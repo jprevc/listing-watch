@@ -22,5 +22,9 @@
             &mdash; stopping…
         {% endif %}
     {% endif %}
+    {% comment %}Unavailable Queries leave this out: their Unavailable badge already explains why their runs fail.{% endcomment %}
+    {% if query.failing_since and not query.unavailable_reason %}
+        <span class="badge badge-failed" title="{{ query.failing_since }}">Failing</span> since {{ query.failing_since|timesince }} ago
+    {% endif %}
 </span>
 {% endwith %}

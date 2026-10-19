@@ -211,7 +211,15 @@ class CrawlRun(models.Model):
 
     items_found_count = models.PositiveIntegerField(default=0)
     new_items_count = models.PositiveIntegerField(default=0)
+    # For crawl failures only: a crawl that finishes is `success` (or `cancelled`) whatever happened
+    # to its Deliveries, which are recorded in the two fields below instead (see ADR-0002).
     error_message = models.TextField(blank=True)
+    pending_deliveries_count = models.PositiveIntegerField(
+        default=0, help_text="Pending Deliveries left for the Query after this run's delivery."
+    )
+    delivery_errors = models.TextField(
+        blank=True, help_text="One line per Notification Profile that failed or was skipped."
+    )
 
     class Meta:
         ordering = ["-started_at"]
@@ -249,3 +257,30 @@ class FoundItem(models.Model):
 
     def __str__(self) -> str:
         return self.title or self.url or f"item #{self.pk}"
+
+
+class Delivery(models.Model):
+    """
+    One Item sent to one Notification Profile attached to the Item's Query (see ADR-0002). It is
+    *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it
+    stays pending too long after the Item was found.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        DELIVERED = "delivered", "Delivered"
+        EXPIRED = "expired", "Expired"
+
+    item = models.ForeignKey(FoundItem, on_delete=models.CASCADE, related_name="deliveries")
+    # The Profile rather than the QueryNotificationConfig attaching it: an attachment edited to
+    # point at another Profile counts as detaching the old Profile and attaching the new one.
+    profile = models.ForeignKey(NotificationProfile, on_delete=models.CASCADE, related_name="deliveries")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("item", "profile")]
+
+    def __str__(self) -> str:
+        return f"{self.item} -> {self.profile}: {self.status}"

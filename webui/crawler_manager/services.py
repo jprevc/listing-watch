@@ -13,8 +13,9 @@ import threading
 from django.db import OperationalError, connection
 from django.utils import timezone
 
-from listing_watch import registry, scrape, spiders
+from listing_watch import registry, spiders
 
+from crawler_manager.delivery import deliver
 from crawler_manager.models import CrawlRun, FoundItem, Query
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ def _content_hash(item: spiders.SpiderItem) -> str:
     return hashlib.sha256(json.dumps(item, sort_keys=True, default=str).encode("utf-8")).hexdigest()
 
 
-def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run: CrawlRun) -> list[spiders.SpiderItem]:
-    new_items: list[spiders.SpiderItem] = []
+def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run: CrawlRun) -> list[FoundItem]:
+    new_items: list[FoundItem] = []
     for item in crawled_items:
         item_hash = _content_hash(item)
         found_item, created = FoundItem.objects.get_or_create(
@@ -47,7 +48,7 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
             },
         )
         if created:
-            new_items.append(item)
+            new_items.append(found_item)
         else:
             found_item.last_seen_run = run
             found_item.save(update_fields=["last_seen_run"])
@@ -56,9 +57,11 @@ def _persist_and_diff(query: Query, crawled_items: list[spiders.SpiderItem], run
 
 def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
     """
-    Runs a single query's spider, persists newly found items, and sends notifications for them.
+    Runs a single query's spider, persists newly found items, and delivers them along with any
+    still-pending ones.
 
-    Never raises: failures are recorded on the returned CrawlRun instead.
+    Never raises: failures are recorded on the returned CrawlRun instead. A failed crawl delivers
+    nothing; a finished one is `success` (or `cancelled`) whatever happened to its Deliveries.
     """
     # The very first successful run for a query always crawls all pages, regardless of
     # `max_pages`, so the item history gets fully populated before later runs start only
@@ -116,27 +119,24 @@ def run_query(query: Query, trigger: str = CrawlRun.Trigger.MANUAL) -> CrawlRun:
         run.items_found_count = len(crawled_items)
         run.new_items_count = len(new_items)
 
-        if new_items:
-            # A list of (label, type, config) triples rather than a dict keyed by type: a query can
-            # attach more than one profile of the same notificator type (e.g. two ntfy topics), and
-            # each attachment must still fire independently and be named on its own if it fails.
-            notification_configs = [
-                (
-                    str(nc.profile),
-                    nc.profile.notificator_name,
-                    {**nc.profile.config, "message_body_format": nc.message_body_format},
-                )
-                for nc in query.notification_configs.select_related("profile")
-            ]
-            scrape.send_notifications(notification_configs, query.name, new_items)
-
-        # A stopped run still keeps whatever was found up to that point -- only the terminal
-        # status differs from a normal completion.
+        # A stopped run still keeps (and delivers) whatever was found up to that point -- only the
+        # terminal status differs from a normal completion.
         run.status = CrawlRun.Status.CANCELLED if cancel_requested.is_set() else CrawlRun.Status.SUCCESS
     except Exception as exc:  # pylint: disable=broad-except
         run.status = CrawlRun.Status.FAILED
         run.error_message = str(exc)
         logger.exception("Query run failed for %s", query)
+    else:
+        # Runs even with no new Items, to retry the Deliveries earlier runs left pending. Nothing
+        # that goes wrong here fails the finished crawl: Items not delivered stay pending.
+        try:
+            outcome = deliver(query, new_items)
+        except Exception as exc:  # pylint: disable=broad-except
+            run.delivery_errors = f"Delivery failed: {exc}"
+            logger.exception("Delivery failed for %s", query)
+        else:
+            run.pending_deliveries_count = outcome.pending_count
+            run.delivery_errors = "\n".join(f"{label}: {error}" for label, error in outcome.errors.items())
     finally:
         stop_polling.set()
         run.finished_at = timezone.now()

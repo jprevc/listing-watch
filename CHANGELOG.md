@@ -1,5 +1,15 @@
 # Change Log
 
+## [Unreleased]
+### Changed
+- Each Item's Delivery is now tracked per Notification Profile: if a Notification Profile fails to send (or is Unavailable),
+  its Items are sent with the Query's next run instead of being lost, for up to 7 days after they
+  were found. A failed send no longer fails the run; the run history shows the pending count and
+  the delivery errors instead.
+
+### Removed
+- `listing_watch.scrape`. Sending Items is done by the web UI.
+
 ## [4.1.0]
 ### Removed
 - The built-in Spiders. Spiders now come only from Plugins, like Notificators, and the Core no longer

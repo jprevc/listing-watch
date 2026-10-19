@@ -20,6 +20,9 @@ class CrawlerManagerConfig(AppConfig):
         # Notificator name stops the Core from starting instead of surfacing mid-request.
         registry.installed()
 
+        # Connects the signal receivers that drop a detached Profile's pending Deliveries.
+        from crawler_manager import delivery  # noqa: F401 pylint: disable=import-outside-toplevel,unused-import
+
         # Avoid starting the scheduler twice under the dev-server autoreloader, and skip it
         # entirely for management commands that don't serve requests.
         if os.environ.get("RUN_MAIN") != "true" and "runserver" in sys.argv:

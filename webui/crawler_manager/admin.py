@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from crawler_manager.models import CrawlRun, FoundItem, NotificationProfile, Query, QueryNotificationConfig
+from crawler_manager.models import CrawlRun, Delivery, FoundItem, NotificationProfile, Query, QueryNotificationConfig
 
 
 class QueryNotificationConfigInline(admin.TabularInline):
@@ -43,7 +43,17 @@ class CrawlRunAdmin(admin.ModelAdmin):
         "finished_at",
         "items_found_count",
         "new_items_count",
+        "pending_deliveries_count",
     )
     list_filter = ("status", "trigger", "spider_name", "user")
-    search_fields = ("query_name", "error_message")
+    search_fields = ("query_name", "error_message", "delivery_errors")
     date_hierarchy = "started_at"
+
+
+@admin.register(Delivery)
+class DeliveryAdmin(admin.ModelAdmin):
+    list_display = ("item", "profile", "status", "created_at", "delivered_at")
+    list_filter = ("status", "profile")
+    list_select_related = ("item", "profile")
+    raw_id_fields = ("item",)
+    date_hierarchy = "created_at"

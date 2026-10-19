@@ -45,5 +45,5 @@ A user's named, configured instance of a Notificator (e.g. "my ntfy topic"); one
 _Avoid_: "Profile" alone in user-facing text, notificator config
 
 **Delivery**:
-One Item sent to one Notification Profile attached to the Item's Query; it is *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it stays pending too long after the Item was found.
+One Item sent to one Notification Profile attached to the Item's Query; it is *pending* until that Profile's Notificator accepts it, then *delivered*, or *expired* if it stays pending too long after the Item was found. A pending Delivery is dropped if its Profile is detached from the Query.
 _Avoid_: Notification, send

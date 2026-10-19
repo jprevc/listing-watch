@@ -211,3 +211,44 @@ def test_run_query_does_not_deliver_when_the_crawl_fails(query: Query, sent, ins
 
     assert run.status == CrawlRun.Status.FAILED
     assert sent == []
+
+
+def test_run_query_alerts_once_a_query_is_failing_and_once_it_works_again(
+    query: Query, sent, installed_plugins
+) -> None:
+    class _ExplodingSpider(_FakeSpider):
+        def run(self, max_pages=None, should_stop=None):
+            raise RuntimeError("site layout changed")
+
+    installed_plugins(spiders={"cars": _ExplodingSpider}, notificators={"pigeon": _Pigeon})
+    failed = [services.run_query(query, trigger=CrawlRun.Trigger.SCHEDULED) for _ in range(3)]
+
+    assert [subject for subject, _ in sent] == ["test_query is failing"]
+    assert sent[0][1].endswith("Latest error:\nsite layout changed")
+    query.refresh_from_db()
+    assert query.failing_since == failed[0].started_at
+
+    sent.clear()
+    _FakeSpider.items = []
+    installed_plugins(spiders={"cars": _FakeSpider}, notificators={"pigeon": _Pigeon})
+    services.run_query(query)
+
+    assert [subject for subject, _ in sent] == ["test_query is working again"]
+    query.refresh_from_db()
+    assert query.failing_since is None
+
+
+def test_run_query_still_records_its_outcome_and_does_not_raise_when_updating_failing_does(
+    query: Query, sent, installed_plugins, monkeypatch
+) -> None:
+    def _broken(query, run):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(services, "update_failing", _broken)
+
+    run = services.run_query(query)
+
+    run.refresh_from_db()
+    assert run.status == CrawlRun.Status.SUCCESS
+    assert run.error_message == ""
+    assert run.delivery_errors == ""

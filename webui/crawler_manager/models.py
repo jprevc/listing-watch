@@ -66,6 +66,9 @@ class Query(models.Model):
         ),
     )
     is_active = models.BooleanField(default=True)
+    # Set while the Query is Failing: the `started_at` of the first failed run in the current streak
+    # (see crawler_manager.failing).
+    failing_since = models.DateTimeField(null=True, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
